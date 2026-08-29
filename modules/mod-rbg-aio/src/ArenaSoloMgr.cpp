@@ -31,12 +31,14 @@
 #include "Map.h"
 #include "ObjectAccessor.h"
 #include "Player.h"
+#include "SharedDefines.h"
 #include "StringFormat.h"
 #include "World.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
 #include "WorldSessionMgr.h"
 #include <algorithm>
+#include <utility>
 #include <unordered_map>
 #include <unordered_set>
 
@@ -122,20 +124,29 @@ void ArenaSoloMgr::LoadConfig(bool /*reload*/)
         config.Elo.MatchmakerModifier = sConfigMgr->GetOption<float>(option("MatchmakerRatingModifier"), 24.f);
     };
 
-    // 1v1 and 3v3 are solo-entry with module-owned personal rating. 2v2 is a
-    // party of two; each player gets a personal 2v2 arena_team (captain = GUID)
-    // and the module writes arena_team / arena_team_member after the match.
+    // 1v1 keeps a module-owned personal rating. 2v2 and 3v3 SoloQ each give
+    // the character a personal arena_team (2v2 slot / 5v5 slot) so rating
+    // lands on arena_team_member. 3v3 stays solo-entry and is assembled
+    // from official compositions when the queue allows it.
     loadBracket(_brackets[ARENA_SOLO_BRACKET_1V1], "1v1", 1, 1, ARENA_TYPE_2v2);
     loadBracket(_brackets[ARENA_SOLO_BRACKET_2V2], "2v2", 2, 2, ARENA_TYPE_2v2);
     loadBracket(_brackets[ARENA_SOLO_BRACKET_3V3], "3v3", 3, 1, ARENA_TYPE_3v3);
 
     _brackets[ARENA_SOLO_BRACKET_1V1].RequireRoleBalance = false;
     _brackets[ARENA_SOLO_BRACKET_1V1].UseCoreArenaTeam = false;
+
     _brackets[ARENA_SOLO_BRACKET_2V2].RequireRoleBalance = false;
     _brackets[ARENA_SOLO_BRACKET_2V2].UseCoreArenaTeam = true;
+    _brackets[ARENA_SOLO_BRACKET_2V2].ArenaTeamType = ARENA_TEAM_2v2;
+    _brackets[ARENA_SOLO_BRACKET_2V2].ArenaTeamSlot = ARENA_SLOT_2v2;
+
     _brackets[ARENA_SOLO_BRACKET_3V3].RequireRoleBalance =
         sConfigMgr->GetOption<bool>("ArenaSolo.3v3.RequireHealer", true);
-    _brackets[ARENA_SOLO_BRACKET_3V3].UseCoreArenaTeam = false;
+    _brackets[ARENA_SOLO_BRACKET_3V3].PreferComps =
+        sConfigMgr->GetOption<bool>("ArenaSolo.3v3.PreferComps", true);
+    _brackets[ARENA_SOLO_BRACKET_3V3].UseCoreArenaTeam = true;
+    _brackets[ARENA_SOLO_BRACKET_3V3].ArenaTeamType = ARENA_TEAM_5v5;
+    _brackets[ARENA_SOLO_BRACKET_3V3].ArenaTeamSlot = ARENA_SLOT_5v5;
 
     LOG_INFO("module.arenasolo", "Arenas: {} (1v1 {}, 2v2 team {}, 3v3 soloq {})",
         _enabled ? "enabled" : "disabled",
@@ -354,24 +365,26 @@ namespace
 {
 uint32 constexpr PERSONAL_TEAM_NAME_MAX = 24;
 
-ArenaTeam* FindTwoVTwoTeam(ObjectGuid guid)
+ArenaTeam* FindPersonalArenaTeam(ObjectGuid guid, uint8 type)
 {
     uint32 teamId = 0;
     if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
-        teamId = player->GetArenaTeamId(ARENA_SLOT_2v2);
+        teamId = player->GetArenaTeamId(ArenaTeam::GetSlotByType(type));
     else
-        teamId = Player::GetArenaTeamIdFromDB(guid, ARENA_TEAM_2v2);
+        teamId = Player::GetArenaTeamIdFromDB(guid, type);
 
     ArenaTeam* team = teamId ? sArenaTeamMgr->GetArenaTeamById(teamId) : nullptr;
-    if (!team || team->GetType() != ARENA_TEAM_2v2)
+    if (!team || team->GetType() != type)
         return nullptr;
 
     return team;
 }
 
-std::string MakePersonalArenaTeamName(Player* player)
+std::string MakePersonalArenaTeamName(Player* player, uint8 type)
 {
-    std::string name = player->GetName();
+    std::string name = type == ARENA_TEAM_5v5
+        ? Acore::StringFormat("{}-5s", player->GetName())
+        : player->GetName();
     if (name.size() > PERSONAL_TEAM_NAME_MAX)
         name.resize(PERSONAL_TEAM_NAME_MAX);
 
@@ -379,10 +392,10 @@ std::string MakePersonalArenaTeamName(Player* player)
         return name;
 
     std::string suffix = Acore::StringFormat("-{}", player->GetGUID().GetCounter());
-    if (player->GetName().size() + suffix.size() > PERSONAL_TEAM_NAME_MAX)
-        name = player->GetName().substr(0, PERSONAL_TEAM_NAME_MAX - suffix.size()) + suffix;
+    if (name.size() + suffix.size() > PERSONAL_TEAM_NAME_MAX)
+        name = name.substr(0, PERSONAL_TEAM_NAME_MAX - suffix.size()) + suffix;
     else
-        name = player->GetName() + suffix;
+        name += suffix;
 
     if (name.size() > PERSONAL_TEAM_NAME_MAX)
         name.resize(PERSONAL_TEAM_NAME_MAX);
@@ -391,7 +404,7 @@ std::string MakePersonalArenaTeamName(Player* player)
 }
 }
 
-bool ArenaSoloMgr::EnsurePersonalArenaTeam(Player* player, std::string& error)
+bool ArenaSoloMgr::EnsurePersonalArenaTeam(Player* player, uint8 bracket, std::string& error)
 {
     if (!player)
     {
@@ -399,53 +412,66 @@ bool ArenaSoloMgr::EnsurePersonalArenaTeam(Player* player, std::string& error)
         return false;
     }
 
-    if (FindTwoVTwoTeam(player->GetGUID()))
+    if (bracket >= ARENA_SOLO_BRACKET_MAX || !_brackets[bracket].UseCoreArenaTeam)
+    {
+        error = "That bracket does not use arena teams.";
+        return false;
+    }
+
+    uint8 type = _brackets[bracket].ArenaTeamType;
+    uint8 slot = _brackets[bracket].ArenaTeamSlot;
+
+    if (FindPersonalArenaTeam(player->GetGUID(), type))
         return true;
 
-    if (ArenaTeam* existing = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), ARENA_TEAM_2v2))
+    if (ArenaTeam* existing = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), type))
     {
-        if (!player->GetArenaTeamId(ARENA_SLOT_2v2) && existing->IsMember(player->GetGUID()))
-            player->SetInArenaTeam(existing->GetId(), ARENA_SLOT_2v2, ARENA_TEAM_2v2);
+        if (!player->GetArenaTeamId(slot) && existing->IsMember(player->GetGUID()))
+            player->SetInArenaTeam(existing->GetId(), slot, type);
         return true;
     }
 
     ArenaTeam* team = new ArenaTeam();
-    if (!team->Create(player->GetGUID(), ARENA_TEAM_2v2, MakePersonalArenaTeamName(player),
+    if (!team->Create(player->GetGUID(), type, MakePersonalArenaTeamName(player, type),
         4293102085, 101, 4293253939, 4, 4284049911))
     {
         delete team;
-        error = Acore::StringFormat("Failed to create a personal 2v2 arena team for {}.", player->GetName());
+        error = Acore::StringFormat("Failed to create a personal {} arena team for {}.",
+            GetBracketName(bracket), player->GetName());
         return false;
     }
 
     sArenaTeamMgr->AddArenaTeam(team);
-    LOG_INFO("module.arenasolo", "Created personal 2v2 arena team {} ({}) for {} ({})",
-        team->GetName(), team->GetId(), player->GetName(), player->GetGUID().ToString());
+    LOG_INFO("module.arenasolo", "Created personal {} arena team {} ({}) for {} ({})",
+        GetBracketName(bracket), team->GetName(), team->GetId(), player->GetName(),
+        player->GetGUID().ToString());
     return true;
 }
 
-bool ArenaSoloMgr::BindArenaTeam(std::vector<Player*> const& members, ArenaSoloQueueEntry& entry,
-    std::string& error)
+bool ArenaSoloMgr::BindArenaTeam(std::vector<Player*> const& members, uint8 bracket,
+    ArenaSoloQueueEntry& entry, std::string& error)
 {
     if (members.empty())
     {
-        error = "2v2 queue requires a party of two.";
+        error = Acore::StringFormat("{} queue is empty.", GetBracketName(bracket));
         return false;
     }
 
+    uint8 type = _brackets[bracket].ArenaTeamType;
     uint64 totalRating = 0;
     uint64 totalMMR = 0;
     uint32 ratedMembers = 0;
 
     for (Player* member : members)
     {
-        if (!EnsurePersonalArenaTeam(member, error))
+        if (!EnsurePersonalArenaTeam(member, bracket, error))
             return false;
 
-        ArenaTeam* team = FindTwoVTwoTeam(member->GetGUID());
+        ArenaTeam* team = FindPersonalArenaTeam(member->GetGUID(), type);
         if (!team)
         {
-            error = Acore::StringFormat("{} has no 2v2 arena team.", member->GetName());
+            error = Acore::StringFormat("{} has no personal {} arena team.",
+                member->GetName(), GetBracketName(bracket));
             return false;
         }
 
@@ -462,7 +488,7 @@ bool ArenaSoloMgr::BindArenaTeam(std::vector<Player*> const& members, ArenaSoloQ
         ++ratedMembers;
     }
 
-    entry.ArenaTeamId = members.front()->GetArenaTeamId(ARENA_SLOT_2v2);
+    entry.ArenaTeamId = members.front()->GetArenaTeamId(_brackets[bracket].ArenaTeamSlot);
     entry.Rating = ratedMembers ? static_cast<uint32>(totalRating / ratedMembers) : 1500;
     entry.MMR = ratedMembers ? static_cast<uint32>(totalMMR / ratedMembers) : 1500;
     return true;
@@ -485,16 +511,18 @@ bool ArenaSoloMgr::BuildEntry(Player* leader, uint8 bracket, ArenaSoloQueueEntry
         }
 
         entry.Members.push_back(member->GetGUID());
-        if (config.RequireRoleBalance && member->HasHealSpec())
+        if (member->HasHealSpec())
             ++entry.Healers;
     }
 
     entry.LeaderGuid = leader->GetGUID();
     entry.Team = leader->GetTeamId();
     entry.JoinTime = GameTime::GetGameTimeMS().count();
+    entry.PlayerClass = leader->getClass();
+    entry.TalentTab = leader->GetSpec();
 
     if (config.UseCoreArenaTeam)
-        return BindArenaTeam(members, entry, error);
+        return BindArenaTeam(members, bracket, entry, error);
 
     uint64 totalRating = 0;
     uint64 totalMMR = 0;
@@ -542,7 +570,7 @@ bool ArenaSoloMgr::RevalidateEntry(ArenaSoloQueueEntry const& entry, uint8 brack
     if (_brackets[bracket].UseCoreArenaTeam)
     {
         ArenaSoloQueueEntry check;
-        if (!BindArenaTeam(members, check, error))
+        if (!BindArenaTeam(members, bracket, check, error))
             return false;
 
         if (check.ArenaTeamId != entry.ArenaTeamId)
@@ -673,7 +701,7 @@ void ArenaSoloMgr::RemovePlayer(ObjectGuid guid)
 ArenaSoloStats ArenaSoloMgr::GetStats(ObjectGuid guid, uint8 bracket)
 {
     if (UsesCoreArenaTeam(bracket))
-        return LoadArenaTeamMemberStats(guid);
+        return LoadArenaTeamMemberStats(guid, bracket);
 
     uint64 key = StatsKey(guid, bracket);
     auto cached = _statsCache.find(key);
@@ -685,14 +713,17 @@ ArenaSoloStats ArenaSoloMgr::GetStats(ObjectGuid guid, uint8 bracket)
     return stats;
 }
 
-ArenaSoloStats ArenaSoloMgr::LoadArenaTeamMemberStats(ObjectGuid guid) const
+ArenaSoloStats ArenaSoloMgr::LoadArenaTeamMemberStats(ObjectGuid guid, uint8 bracket) const
 {
     ArenaSoloStats stats;
     stats.Rating = 0;
     stats.MMR = 0;
     stats.HighestRating = 0;
 
-    ArenaTeam* team = FindTwoVTwoTeam(guid);
+    if (bracket >= ARENA_SOLO_BRACKET_MAX)
+        return stats;
+
+    ArenaTeam* team = FindPersonalArenaTeam(guid, _brackets[bracket].ArenaTeamType);
     if (!team)
         return stats;
 
@@ -804,8 +835,229 @@ void ArenaSoloMgr::PruneQueue(uint8 bracket)
     }
 }
 
+namespace
+{
+struct CompSlot
+{
+    uint8 Class = 0;
+    uint32 TalentTab = 0;
+    bool MustHeal = false;
+    bool ForbidShadow = false;
+};
+
+struct OfficialComp
+{
+    char const* Name;
+    CompSlot Slots[3];
+};
+
+bool FitsCompSlot(ArenaSoloQueueEntry const& entry, CompSlot const& slot)
+{
+    if (slot.Class && entry.PlayerClass != slot.Class)
+        return false;
+    if (slot.TalentTab && entry.TalentTab != slot.TalentTab)
+        return false;
+    if (slot.MustHeal && !entry.Healers)
+        return false;
+    if (slot.ForbidShadow && entry.TalentTab == TALENT_TREE_PRIEST_SHADOW)
+        return false;
+    return true;
+}
+
+bool TakeComp(std::vector<ArenaSoloQueueEntry> const& pool, OfficialComp const& comp,
+    std::vector<bool>& used, std::vector<ArenaSoloQueueEntry>& out)
+{
+    size_t picked[3] = { pool.size(), pool.size(), pool.size() };
+    for (uint8 slot = 0; slot < 3; ++slot)
+    {
+        bool found = false;
+        for (size_t i = 0; i < pool.size(); ++i)
+        {
+            if (used[i])
+                continue;
+
+            bool already = false;
+            for (uint8 prev = 0; prev < slot; ++prev)
+                if (picked[prev] == i)
+                    already = true;
+            if (already)
+                continue;
+
+            if (!FitsCompSlot(pool[i], comp.Slots[slot]))
+                continue;
+
+            picked[slot] = i;
+            found = true;
+            break;
+        }
+
+        if (!found)
+            return false;
+    }
+
+    out.clear();
+    for (uint8 slot = 0; slot < 3; ++slot)
+    {
+        used[picked[slot]] = true;
+        out.push_back(pool[picked[slot]]);
+    }
+    return true;
+}
+
+// Named 3v3 comps first (more specific before generic). Fallback is 1h+2d.
+OfficialComp const OfficialComps[] =
+{
+    { "Shadowplay", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_MAGE, 0, false, false },
+        { CLASS_PRIEST, TALENT_TREE_PRIEST_SHADOW, false, false }
+    }},
+    { "RMP", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_MAGE, 0, false, false },
+        { CLASS_PRIEST, 0, true, true }
+    }},
+    { "MLS", {
+        { CLASS_MAGE, 0, false, false },
+        { CLASS_WARLOCK, 0, false, false },
+        { CLASS_SHAMAN, 0, false, false }
+    }},
+    { "Jungle Cleave", {
+        { CLASS_DRUID, TALENT_TREE_DRUID_FERAL_COMBAT, false, false },
+        { CLASS_HUNTER, 0, false, false },
+        { 0, 0, true, false }
+    }},
+    { "God Comp", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_WARRIOR, 0, false, false },
+        { CLASS_PALADIN, TALENT_TREE_PALADIN_HOLY, true, false }
+    }},
+    { "Thunder Cleave", {
+        { CLASS_SHAMAN, TALENT_TREE_SHAMAN_ENHANCEMENT, false, false },
+        { CLASS_HUNTER, 0, false, false },
+        { 0, 0, true, false }
+    }},
+    { "TSG", {
+        { CLASS_WARRIOR, 0, false, false },
+        { CLASS_DEATH_KNIGHT, 0, false, false },
+        { CLASS_PALADIN, TALENT_TREE_PALADIN_HOLY, true, false }
+    }},
+    { "WLS", {
+        { CLASS_WARRIOR, 0, false, false },
+        { CLASS_WARLOCK, 0, false, false },
+        { CLASS_SHAMAN, 0, false, false }
+    }},
+    { "RLS", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_WARLOCK, 0, false, false },
+        { CLASS_SHAMAN, 0, false, false }
+    }},
+    { "RPS", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_PRIEST, 0, true, true },
+        { CLASS_SHAMAN, 0, false, false }
+    }},
+    { "PHD", {
+        { CLASS_PALADIN, TALENT_TREE_PALADIN_HOLY, true, false },
+        { CLASS_HUNTER, 0, false, false },
+        { CLASS_DRUID, 0, false, false }
+    }},
+    { "KFC", {
+        { CLASS_HUNTER, 0, false, false },
+        { CLASS_MAGE, 0, false, false },
+        { 0, 0, true, false }
+    }},
+    { "LSD", {
+        { CLASS_WARLOCK, 0, false, false },
+        { CLASS_SHAMAN, 0, false, false },
+        { CLASS_DRUID, 0, false, false }
+    }},
+    { "WRP", {
+        { CLASS_WARRIOR, 0, false, false },
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_PRIEST, 0, true, true }
+    }},
+    { "Rogue Mage Paladin", {
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_MAGE, 0, false, false },
+        { CLASS_PALADIN, TALENT_TREE_PALADIN_HOLY, true, false }
+    }},
+    { "Beastcleave", {
+        { CLASS_HUNTER, 0, false, false },
+        { CLASS_DEATH_KNIGHT, 0, false, false },
+        { 0, 0, true, false }
+    }},
+    { "Feral Rogue Priest", {
+        { CLASS_DRUID, TALENT_TREE_DRUID_FERAL_COMBAT, false, false },
+        { CLASS_ROGUE, 0, false, false },
+        { CLASS_PRIEST, 0, true, true }
+    }},
+    { "Ret Mage Priest", {
+        { CLASS_PALADIN, TALENT_TREE_PALADIN_RETRIBUTION, false, false },
+        { CLASS_MAGE, 0, false, false },
+        { CLASS_PRIEST, 0, true, true }
+    }}
+};
+}
+
+bool ArenaSoloMgr::BuildOfficialComps(std::vector<ArenaSoloQueueEntry> const& pool,
+    std::vector<ArenaSoloQueueEntry>& alliance, std::vector<ArenaSoloQueueEntry>& horde,
+    std::string& allianceComp, std::string& hordeComp) const
+{
+    if (pool.size() < 6)
+        return false;
+
+    ObjectGuid anchor = pool.front().LeaderGuid;
+
+    for (OfficialComp const& first : OfficialComps)
+    {
+        std::vector<bool> used(pool.size(), false);
+        std::vector<ArenaSoloQueueEntry> teamA;
+        if (!TakeComp(pool, first, used, teamA))
+            continue;
+
+        for (OfficialComp const& second : OfficialComps)
+        {
+            std::vector<bool> usedB = used;
+            std::vector<ArenaSoloQueueEntry> teamB;
+            if (!TakeComp(pool, second, usedB, teamB))
+                continue;
+
+            bool hasAnchor = false;
+            for (ArenaSoloQueueEntry const& entry : teamA)
+                if (entry.LeaderGuid == anchor)
+                    hasAnchor = true;
+            for (ArenaSoloQueueEntry const& entry : teamB)
+                if (entry.LeaderGuid == anchor)
+                    hasAnchor = true;
+            if (!hasAnchor)
+                continue;
+
+            uint32 mmrA = AverageMMR(teamA);
+            uint32 mmrB = AverageMMR(teamB);
+            if (mmrA <= mmrB)
+            {
+                alliance = std::move(teamA);
+                horde = std::move(teamB);
+                allianceComp = first.Name;
+                hordeComp = second.Name;
+            }
+            else
+            {
+                alliance = std::move(teamB);
+                horde = std::move(teamA);
+                allianceComp = second.Name;
+                hordeComp = first.Name;
+            }
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool ArenaSoloMgr::BuildTeams(uint8 bracket, std::vector<ArenaSoloQueueEntry>& alliance,
-    std::vector<ArenaSoloQueueEntry>& horde)
+    std::vector<ArenaSoloQueueEntry>& horde, std::string& allianceComp, std::string& hordeComp)
 {
     ArenaSoloBracketConfig const& config = _brackets[bracket];
     std::list<ArenaSoloQueueEntry>& queue = _queues[bracket];
@@ -837,6 +1089,12 @@ bool ArenaSoloMgr::BuildTeams(uint8 bracket, std::vector<ArenaSoloQueueEntry>& a
 
     if (pool.size() < neededEntries)
         return false;
+
+    if (config.PreferComps && BuildOfficialComps(pool, alliance, horde, allianceComp, hordeComp))
+        return true;
+
+    allianceComp.clear();
+    hordeComp.clear();
 
     auto assign = [&](ArenaSoloQueueEntry const& entry)
     {
@@ -964,11 +1222,13 @@ void ArenaSoloMgr::TryMatch(uint8 bracket)
 
     std::vector<ArenaSoloQueueEntry> alliance;
     std::vector<ArenaSoloQueueEntry> horde;
-    if (!BuildTeams(bracket, alliance, horde))
+    std::string allianceComp;
+    std::string hordeComp;
+    if (!BuildTeams(bracket, alliance, horde, allianceComp, hordeComp))
         return;
 
     // Only drop the picked entries from the queue once the arena really exists.
-    if (!StartMatch(bracket, alliance, horde))
+    if (!StartMatch(bracket, alliance, horde, allianceComp, hordeComp))
         return;
 
     for (ArenaSoloQueueEntry const& entry : alliance)
@@ -979,7 +1239,8 @@ void ArenaSoloMgr::TryMatch(uint8 bracket)
 }
 
 bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> const& alliance,
-    std::vector<ArenaSoloQueueEntry> const& horde)
+    std::vector<ArenaSoloQueueEntry> const& horde, std::string const& allianceComp,
+    std::string const& hordeComp)
 {
     ArenaSoloBracketConfig const& config = _brackets[bracket];
 
@@ -1005,7 +1266,7 @@ bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> co
         return leader && leader->GetGroup();
     };
 
-    if (config.UseCoreArenaTeam)
+    if (config.UseCoreArenaTeam && config.GroupSize > 1)
     {
         for (ArenaSoloQueueEntry const& entry : alliance)
             if (!leaderGroupReady(entry))
@@ -1015,8 +1276,8 @@ bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> co
                 return false;
     }
 
-    // Always skirmish: 1v1/3v3 have no arena team, and 2v2 uses one personal
-    // team per player (the core only writes a single team id per side).
+    // Always skirmish: each player has a personal arena team and the core
+    // only writes a single team id per side.
     Battleground* bg = sBattlegroundMgr->CreateNewBattleground(BATTLEGROUND_AA, bracketEntry,
         config.ArenaType, false);
     if (!bg)
@@ -1035,7 +1296,7 @@ bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> co
     {
         for (ArenaSoloQueueEntry const& entry : side)
         {
-            if (config.UseCoreArenaTeam)
+            if (config.UseCoreArenaTeam && config.GroupSize > 1)
             {
                 Player* leader = ObjectAccessor::FindConnectedPlayer(entry.LeaderGuid);
                 if (!leader || !leader->GetGroup())
@@ -1099,6 +1360,8 @@ bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> co
     match.Bracket = bracket;
     match.AllianceMMR = AverageMMR(alliance);
     match.HordeMMR = AverageMMR(horde);
+    match.AllianceComp = allianceComp;
+    match.HordeComp = hordeComp;
     for (ArenaSoloQueueEntry const& entry : alliance)
         match.Alliance.insert(match.Alliance.end(), entry.Members.begin(), entry.Members.end());
     for (ArenaSoloQueueEntry const& entry : horde)
@@ -1106,8 +1369,24 @@ bool ArenaSoloMgr::StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> co
 
     _matches[match.InstanceId] = match;
 
-    LOG_INFO("module.arenasolo", "Started {} arena instance {} on map {} (mmr {} vs {})",
-        GetBracketName(bracket), match.InstanceId, bg->GetMapId(), match.AllianceMMR, match.HordeMMR);
+    if (!allianceComp.empty() || !hordeComp.empty())
+    {
+        auto announce = [&](std::vector<ObjectGuid> const& side, std::string const& own, std::string const& enemy)
+        {
+            for (ObjectGuid const& guid : side)
+                if (Player* player = ObjectAccessor::FindConnectedPlayer(guid))
+                    ChatHandler(player->GetSession()).PSendSysMessage(
+                        "{} composition: {} vs {}.", GetBracketName(bracket),
+                        own.empty() ? "pickup" : own, enemy.empty() ? "pickup" : enemy);
+        };
+        announce(match.Alliance, allianceComp, hordeComp);
+        announce(match.Horde, hordeComp, allianceComp);
+    }
+
+    LOG_INFO("module.arenasolo", "Started {} arena instance {} on map {} (mmr {} vs {}{}{})",
+        GetBracketName(bracket), match.InstanceId, bg->GetMapId(), match.AllianceMMR, match.HordeMMR,
+        allianceComp.empty() ? "" : Acore::StringFormat(", {}", allianceComp),
+        hordeComp.empty() ? "" : Acore::StringFormat(" vs {}", hordeComp));
     return true;
 }
 
@@ -1165,17 +1444,17 @@ void ArenaSoloMgr::ApplyResult(ObjectGuid guid, uint8 bracket, uint32 opponentMM
         won ? config.HonorWin : config.HonorLoss, arenaPoints);
 }
 
-void ArenaSoloMgr::ApplyArenaTeamSide(std::vector<ObjectGuid> const& side, uint32 opponentMMR, bool won,
-    Map const* bgMap)
+void ArenaSoloMgr::ApplyArenaTeamSide(uint8 bracket, std::vector<ObjectGuid> const& side, uint32 opponentMMR,
+    bool won, Map const* bgMap)
 {
-    ArenaSoloBracketConfig const& config = _brackets[ARENA_SOLO_BRACKET_2V2];
+    ArenaSoloBracketConfig const& config = _brackets[bracket];
     std::unordered_map<uint32, ArenaTeam*> teams;
     std::unordered_map<uint32, uint32> teamMMR;
     std::unordered_map<uint32, uint32> teamMMRCount;
 
     for (ObjectGuid const& guid : side)
     {
-        ArenaTeam* team = FindTwoVTwoTeam(guid);
+        ArenaTeam* team = FindPersonalArenaTeam(guid, config.ArenaTeamType);
         if (!team)
             continue;
 
@@ -1199,7 +1478,7 @@ void ArenaSoloMgr::ApplyArenaTeamSide(std::vector<ObjectGuid> const& side, uint3
 
     for (ObjectGuid const& guid : side)
     {
-        ArenaTeam* team = FindTwoVTwoTeam(guid);
+        ArenaTeam* team = FindPersonalArenaTeam(guid, config.ArenaTeamType);
         if (!team)
             continue;
 
@@ -1225,7 +1504,7 @@ void ArenaSoloMgr::ApplyArenaTeamSide(std::vector<ObjectGuid> const& side, uint3
             int32 ratingDelta = static_cast<int32>(newRating) - static_cast<int32>(oldRating);
             ChatHandler(player->GetSession()).PSendSysMessage(
                 "{} {}: {} personal rating ({} -> {}), team {}. {} honor.",
-                GetBracketName(ARENA_SOLO_BRACKET_2V2), won ? "victory" : "defeat",
+                GetBracketName(bracket), won ? "victory" : "defeat",
                 ratingDelta >= 0 ? Acore::StringFormat("+{}", ratingDelta) : std::to_string(ratingDelta),
                 oldRating, newRating, team->GetName(),
                 won ? config.HonorWin : config.HonorLoss);
@@ -1272,8 +1551,8 @@ void ArenaSoloMgr::HandleBattlegroundEnd(Battleground* bg, TeamId winner)
         }
 
         Map const* bgMap = bg->FindBgMap();
-        ApplyArenaTeamSide(match.Alliance, match.HordeMMR, winner == TEAM_ALLIANCE, bgMap);
-        ApplyArenaTeamSide(match.Horde, match.AllianceMMR, winner == TEAM_HORDE, bgMap);
+        ApplyArenaTeamSide(match.Bracket, match.Alliance, match.HordeMMR, winner == TEAM_ALLIANCE, bgMap);
+        ApplyArenaTeamSide(match.Bracket, match.Horde, match.AllianceMMR, winner == TEAM_HORDE, bgMap);
         LOG_INFO("module.arenasolo", "{} instance {} ended; personal arena_team_member rows updated.",
             GetBracketName(match.Bracket), match.InstanceId);
         return;
@@ -1336,7 +1615,7 @@ std::vector<PvPLeaderboardRow> ArenaSoloMgr::GetLeaderboard(uint8 bracket, uint3
             "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = {} "
             "INNER JOIN characters c ON c.guid = atm.guid "
             "ORDER BY atm.personalRating DESC, atm.seasonWins DESC LIMIT {}",
-            uint32(ARENA_TEAM_2v2), limit);
+            uint32(_brackets[bracket].ArenaTeamType), limit);
     else
         result = CharacterDatabase.Query(
             "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM arena_solo_stats s "
@@ -1357,4 +1636,44 @@ std::vector<PvPLeaderboardRow> ArenaSoloMgr::GetLeaderboard(uint8 bracket, uint3
     } while (result->NextRow());
 
     return rows;
+}
+
+bool ArenaSoloMgr::IsInMatch(ObjectGuid guid) const
+{
+    for (auto const& kv : _matches)
+    {
+        for (ObjectGuid const& member : kv.second.Alliance)
+            if (member == guid)
+                return true;
+        for (ObjectGuid const& member : kv.second.Horde)
+            if (member == guid)
+                return true;
+    }
+
+    return false;
+}
+
+void ArenaSoloMgr::HandleDesertion(Player* player, uint8 desertionType)
+{
+    if (!player || !IsInMatch(player->GetGUID()))
+        return;
+
+    switch (desertionType)
+    {
+        case ARENA_DESERTION_TYPE_LEAVE_BG:
+        case ARENA_DESERTION_TYPE_LEAVE_QUEUE:
+        case ARENA_DESERTION_TYPE_NO_ENTER_BUTTON:
+        case ARENA_DESERTION_TYPE_INVITE_LOGOUT:
+            break;
+        default:
+            return;
+    }
+
+    if (!player->HasAura(SPELL_DESERTER))
+        player->CastSpell(player, SPELL_DESERTER, true);
+
+    ChatHandler(player->GetSession()).SendSysMessage(
+        "You received Deserter for leaving or missing the arena.");
+    LOG_INFO("module.arenasolo", "{} ({}) received Deserter (type {})",
+        player->GetName(), player->GetGUID().ToString(), desertionType);
 }

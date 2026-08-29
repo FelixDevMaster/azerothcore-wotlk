@@ -16,6 +16,7 @@
  */
 
 #include "ArenaSoloMgr.h"
+#include "Battleground.h"
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Creature.h"
@@ -50,7 +51,7 @@ void SendBracketStats(ChatHandler* handler, Player* player, uint8 bracket)
     if (sArenaSoloMgr->UsesCoreArenaTeam(bracket))
     {
         if (stats.TeamName.empty())
-            handler->PSendSysMessage("{} — personal 2v2 team not ready yet. Queue once to create it.",
+            handler->PSendSysMessage("{} — personal arena team not ready yet. Queue once to create it.",
                 ArenaSoloMgr::GetBracketName(bracket));
         else
             handler->PSendSysMessage("{} — {} personal / {} team rating ({}), {}-{} (week {}-{}).",
@@ -147,20 +148,31 @@ public:
     ArenaSoloPlayerScript() : PlayerScript("ArenaSoloPlayerScript", {
         PLAYERHOOK_ON_LOGIN,
         PLAYERHOOK_ON_LOGOUT,
+        PLAYERHOOK_ON_BATTLEGROUND_DESERTION,
         PLAYERHOOK_CAN_JOIN_IN_BATTLEGROUND_QUEUE,
         PLAYERHOOK_CAN_JOIN_IN_ARENA_QUEUE
     }) { }
 
     void OnPlayerLogin(Player* player) override
     {
-        if (!player || !sArenaSoloMgr->IsEnabled() || !sArenaSoloMgr->IsBracketEnabled(ARENA_SOLO_BRACKET_2V2)
-            || !sArenaSoloMgr->UsesCoreArenaTeam(ARENA_SOLO_BRACKET_2V2))
+        if (!player || !sArenaSoloMgr->IsEnabled())
             return;
 
-        std::string error;
-        if (!sArenaSoloMgr->EnsurePersonalArenaTeam(player, error))
-            LOG_DEBUG("module.arenasolo", "Could not ensure personal 2v2 team for {}: {}",
-                player->GetName(), error);
+        for (uint8 bracket = 0; bracket < ARENA_SOLO_BRACKET_MAX; ++bracket)
+        {
+            if (!sArenaSoloMgr->IsBracketEnabled(bracket) || !sArenaSoloMgr->UsesCoreArenaTeam(bracket))
+                continue;
+
+            std::string error;
+            if (!sArenaSoloMgr->EnsurePersonalArenaTeam(player, bracket, error))
+                LOG_DEBUG("module.arenasolo", "Could not ensure personal {} team for {}: {}",
+                    ArenaSoloMgr::GetBracketName(bracket), player->GetName(), error);
+        }
+    }
+
+    void OnPlayerBattlegroundDesertion(Player* player, BattlegroundDesertionType const desertionType) override
+    {
+        sArenaSoloMgr->HandleDesertion(player, desertionType);
     }
 
     void OnPlayerLogout(Player* player) override
@@ -265,8 +277,10 @@ public:
 
                 ArenaSoloBracketConfig const& config = sArenaSoloMgr->GetBracketConfig(bracket);
                 std::string queueKind = "solo";
-                if (config.UseCoreArenaTeam)
+                if (config.UseCoreArenaTeam && config.GroupSize > 1)
                     queueKind = "party of 2, personal teams";
+                else if (config.UseCoreArenaTeam)
+                    queueKind = "solo, official 3v3 comps";
                 else if (config.GroupSize > 1)
                     queueKind = Acore::StringFormat("party of {}", config.GroupSize);
 
@@ -422,8 +436,9 @@ public:
                 sArenaSoloMgr->GetQueuedCount(*queued) == 1 ? "y" : "ies");
         else
             handler->SendSysMessage(
-                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped, "
-                "or .solo 2v2 in a party of 2 (each player gets a personal 2v2 team).");
+                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped "
+                "(3v3 uses a personal 5v5 team and official comps), "
+                "or .solo 2v2 in a party of 2 (personal 2v2 team).");
 
         return true;
     }

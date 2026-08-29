@@ -44,15 +44,15 @@ local function LoadRbgStats(player)
     }
 end
 
-local function LoadArenaTeamMemberStats(player)
-    -- LK 2v2: personal rating lives on arena_team_member, MMR on character_arena_stats.slot 0.
+local function LoadArenaTeamMemberStats(player, teamType, slot)
+    -- 2v2 uses type 2 / slot 0. 3v3 SoloQ uses type 5 / slot 2.
     local q = CharDBQuery(string.format(
         "SELECT atm.personalRating, IFNULL(cas.matchMakerRating, 0), atm.seasonGames, atm.seasonWins, "
             .. "atm.weekGames, atm.weekWins, at.rating, atm.personalRating, at.name "
             .. "FROM arena_team_member atm "
-            .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = 2 "
-            .. "LEFT JOIN character_arena_stats cas ON cas.guid = atm.guid AND cas.slot = 0 "
-            .. "WHERE atm.guid = %d", GuidLow(player)))
+            .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = %d "
+            .. "LEFT JOIN character_arena_stats cas ON cas.guid = atm.guid AND cas.slot = %d "
+            .. "WHERE atm.guid = %d", teamType, slot, GuidLow(player)))
     if not q then
         return { rating = 0, mmr = 0, games = 0, wins = 0,
             weekGames = 0, weekWins = 0, weekPoints = 0, highest = 0,
@@ -74,7 +74,10 @@ end
 
 local function LoadSoloStats(player, bracket)
     if bracket == BRACKET_2V2 then
-        return LoadArenaTeamMemberStats(player)
+        return LoadArenaTeamMemberStats(player, 2, 0)
+    end
+    if bracket == BRACKET_3V3 then
+        return LoadArenaTeamMemberStats(player, 5, 2)
     end
 
     local q = CharDBQuery(string.format(
@@ -191,12 +194,14 @@ function Handlers.RequestBoard(player, tab)
     if tab == 1 then
         query = "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM rbg_stats s "
             .. "INNER JOIN characters c ON c.guid = s.guid ORDER BY s.rating DESC, s.wins DESC LIMIT 15"
-    elseif tab == 3 then
-        query = "SELECT c.name, atm.personalRating, atm.seasonWins, (atm.seasonGames - atm.seasonWins) "
-            .. "FROM arena_team_member atm "
-            .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = 2 "
-            .. "INNER JOIN characters c ON c.guid = atm.guid "
-            .. "ORDER BY atm.personalRating DESC, atm.seasonWins DESC LIMIT 15"
+    elseif tab == 3 or tab == 4 then
+        local teamType = (tab == 3) and 2 or 5
+        query = string.format(
+            "SELECT c.name, atm.personalRating, atm.seasonWins, (atm.seasonGames - atm.seasonWins) "
+                .. "FROM arena_team_member atm "
+                .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = %d "
+                .. "INNER JOIN characters c ON c.guid = atm.guid "
+                .. "ORDER BY atm.personalRating DESC, atm.seasonWins DESC LIMIT 15", teamType)
     else
         query = string.format(
             "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM arena_solo_stats s "

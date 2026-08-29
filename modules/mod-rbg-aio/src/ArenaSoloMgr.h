@@ -53,7 +53,7 @@ struct ArenaSoloStats
     uint16 WeekWins = 0;
     uint16 WeekPoints = 0;
     uint32 HighestRating = 1500;
-    // Filled only for the 2v2 bracket (core arena_team / arena_team_member).
+    // Filled when the bracket uses a personal arena_team.
     uint32 TeamRating = 0;
     std::string TeamName;
 };
@@ -70,6 +70,8 @@ struct ArenaSoloQueueEntry
     uint32 JoinTime = 0;
     uint32 Healers = 0;
     uint32 ArenaTeamId = 0;
+    uint8 PlayerClass = 0;
+    uint32 TalentTab = 0;
 
     [[nodiscard]] bool Contains(ObjectGuid guid) const
     {
@@ -85,6 +87,8 @@ struct ArenaSoloMatch
     uint32 HordeMMR = 1500;
     std::vector<ObjectGuid> Alliance;
     std::vector<ObjectGuid> Horde;
+    std::string AllianceComp;
+    std::string HordeComp;
 };
 
 struct ArenaSoloBracketConfig
@@ -96,10 +100,11 @@ struct ArenaSoloBracketConfig
     uint32 GroupSize = 1;
     uint8 ArenaType = 2;
     // When set, rating lives on arena_team / arena_team_member. Each player
-    // owns a personal 2v2 team (captain = character GUID). The match is a
-    // skirmish so the core does not write a single team-id per side; the
-    // module applies ArenaTeam won/lost onto every personal team.
+    // owns a personal team of ArenaTeamType (captain = character GUID).
     bool UseCoreArenaTeam = false;
+    uint8 ArenaTeamType = 0;
+    uint8 ArenaTeamSlot = 0;
+    bool PreferComps = false;
     uint32 MinLevel = 80;
     uint32 StartRating = 1500;
     uint32 StartMMR = 1500;
@@ -131,6 +136,7 @@ public:
     ArenaSoloStats GetStats(ObjectGuid guid, uint8 bracket);
     void HandleBattlegroundEnd(Battleground* bg, TeamId winner);
     void HandleBattlegroundDestroy(Battleground* bg);
+    void HandleDesertion(Player* player, uint8 desertionType);
 
     [[nodiscard]] bool IsEnabled() const { return _enabled; }
     [[nodiscard]] bool IsBracketEnabled(uint8 bracket) const;
@@ -138,7 +144,7 @@ public:
     [[nodiscard]] ArenaSoloBracketConfig const& GetBracketConfig(uint8 bracket) const;
     [[nodiscard]] uint32 GetNPCEntry() const { return _npcEntry; }
     [[nodiscard]] bool UsesCoreArenaTeam(uint8 bracket) const;
-    bool EnsurePersonalArenaTeam(Player* player, std::string& error);
+    bool EnsurePersonalArenaTeam(Player* player, uint8 bracket, std::string& error);
 
     std::vector<PvPLeaderboardRow> GetLeaderboard(uint8 bracket, uint32 limit = 15);
 
@@ -152,16 +158,23 @@ private:
     void PruneQueue(uint8 bracket);
     void TryMatch(uint8 bracket);
     bool StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> const& alliance,
-        std::vector<ArenaSoloQueueEntry> const& horde);
+        std::vector<ArenaSoloQueueEntry> const& horde, std::string const& allianceComp,
+        std::string const& hordeComp);
     bool CanQueuePlayer(Player* player, uint8 bracket, std::string& error) const;
     bool CollectMembers(Player* leader, uint8 bracket, std::vector<Player*>& members, std::string& error) const;
-    bool BindArenaTeam(std::vector<Player*> const& members, ArenaSoloQueueEntry& entry, std::string& error);
+    bool BindArenaTeam(std::vector<Player*> const& members, uint8 bracket, ArenaSoloQueueEntry& entry,
+        std::string& error);
     bool BuildEntry(Player* leader, uint8 bracket, ArenaSoloQueueEntry& entry, std::string& error);
-    ArenaSoloStats LoadArenaTeamMemberStats(ObjectGuid guid) const;
+    ArenaSoloStats LoadArenaTeamMemberStats(ObjectGuid guid, uint8 bracket) const;
     bool RevalidateEntry(ArenaSoloQueueEntry const& entry, uint8 bracket, std::string& error);
-    void ApplyArenaTeamSide(std::vector<ObjectGuid> const& side, uint32 opponentMMR, bool won, Map const* bgMap);
+    void ApplyArenaTeamSide(uint8 bracket, std::vector<ObjectGuid> const& side, uint32 opponentMMR, bool won,
+        Map const* bgMap);
     bool BuildTeams(uint8 bracket, std::vector<ArenaSoloQueueEntry>& alliance,
-        std::vector<ArenaSoloQueueEntry>& horde);
+        std::vector<ArenaSoloQueueEntry>& horde, std::string& allianceComp, std::string& hordeComp);
+    bool BuildOfficialComps(std::vector<ArenaSoloQueueEntry> const& pool,
+        std::vector<ArenaSoloQueueEntry>& alliance, std::vector<ArenaSoloQueueEntry>& horde,
+        std::string& allianceComp, std::string& hordeComp) const;
+    [[nodiscard]] bool IsInMatch(ObjectGuid guid) const;
     static uint32 TotalMMR(std::vector<ArenaSoloQueueEntry> const& side);
     static uint32 SidePlayerCount(std::vector<ArenaSoloQueueEntry> const& side);
 
