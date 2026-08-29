@@ -31,24 +31,30 @@ No core file is modified: the module only uses existing script hooks and the pub
 
 ## Requirements
 
-- AzerothCore WotLK, with this module in `modules/mod-rbg-aio`
+- AzerothCore WotLK, with this module cloned into `modules/mod-rbg-aio`
 - Rebuild worldserver after adding the module
 - **Optional UI:** [mod-ale](https://github.com/azerothcore/mod-ale) (or Eluna) + [AIO](https://github.com/Rochet2/AIO)
 
 ## Install
 
-1. Place this folder in `azerothcore-wotlk/modules/mod-rbg-aio`.
+1. Clone into your AzerothCore modules folder:
+
+```bash
+cd azerothcore-wotlk/modules
+git clone https://github.com/FelixDevMaster/AC_modules.git mod-rbg-aio
+```
+
 2. Import the world SQL: `data/sql/world/rbg_npc.sql` and `data/sql/world/arena_solo_npc.sql`.
 3. Merge `conf/rbg.conf.dist` into `worldserver.conf` (or copy it next to the other module configs).
-4. Rebuild and restart worldserver.
-5. Spawn the NPCs: `.npc add 190010` (RBG battlemaster) and `.npc add 190011` (solo queue master).
+4. Re-run CMake, then rebuild and restart worldserver.
+5. Spawn the NPCs: `.npc add 190010` (RBG battlemaster) and `.npc add 190011` (arena queue master).
 
 Character tables (`rbg_stats`, `arena_solo_stats`, request and state tables) are created automatically on startup. `data/sql/characters/` holds the same schema as a snapshot for operators who want to inspect or pre-create it.
 
 ### AIO UI (optional)
 
-1. Install AIO: `AIO_Server` → `lua_scripts/` (next to `AIO.lua`), `AIO_Client` → `Interface/AddOns/` on every client.
-2. The scripts already live in the repo `lua_scripts/` folder (`RBG_Server.lua`, `RBG_Client.lua`). If your worldserver reads another path, copy those two files next to `AIO.lua`.
+1. Install AIO: `AIO_Server` → the worldserver `lua_scripts/` folder, `AIO_Client` → `Interface/AddOns/` on every client.
+2. Copy this module's `lua_scripts/RBG_Server.lua` and `lua_scripts/RBG_Client.lua` next to `AIO.lua` in that same folder.
 3. Restart worldserver (or `.reload eluna` if you use that).
 4. In-game: `/rbg` or the minimap badge. Tabs: **RBG | 1v1 | 2v2 | 3v3 | Ranking**.
 
