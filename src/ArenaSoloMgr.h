@@ -22,6 +22,7 @@
 #include "Optional.h"
 #include "PvPShared.h"
 #include "SharedDefines.h"
+#include <algorithm>
 #include <array>
 #include <list>
 #include <string>
@@ -32,11 +33,13 @@
 class Battleground;
 class Player;
 
+// Values are persisted in arena_solo_stats.bracket, so never renumber them.
 enum ArenaSoloBracket : uint8
 {
     ARENA_SOLO_BRACKET_1V1 = 0,
     ARENA_SOLO_BRACKET_3V3 = 1,
-    ARENA_SOLO_BRACKET_MAX = 2
+    ARENA_SOLO_BRACKET_2V2 = 2,
+    ARENA_SOLO_BRACKET_MAX = 3
 };
 
 struct ArenaSoloStats
@@ -51,14 +54,22 @@ struct ArenaSoloStats
     uint32 HighestRating = 1500;
 };
 
+// One queue entry is one entering unit: a single player in the solo brackets,
+// a party of two in the MoP-style 2v2 bracket.
 struct ArenaSoloQueueEntry
 {
-    ObjectGuid Guid;
+    ObjectGuid LeaderGuid;
+    std::vector<ObjectGuid> Members;
     TeamId Team = TEAM_ALLIANCE;
     uint32 Rating = 1500;
     uint32 MMR = 1500;
     uint32 JoinTime = 0;
-    bool Healer = false;
+    uint32 Healers = 0;
+
+    [[nodiscard]] bool Contains(ObjectGuid guid) const
+    {
+        return std::find(Members.begin(), Members.end(), guid) != Members.end();
+    }
 };
 
 struct ArenaSoloMatch
@@ -75,6 +86,9 @@ struct ArenaSoloBracketConfig
 {
     bool Enabled = true;
     uint32 TeamSize = 1;
+    // Players that queue together: 1 for the solo brackets, TeamSize for premade
+    // brackets like 2v2. TeamSize must stay a multiple of it.
+    uint32 GroupSize = 1;
     uint8 ArenaType = 2;
     uint32 MinLevel = 80;
     uint32 StartRating = 1500;
@@ -127,9 +141,14 @@ private:
     void TryMatch(uint8 bracket);
     bool StartMatch(uint8 bracket, std::vector<ArenaSoloQueueEntry> const& alliance,
         std::vector<ArenaSoloQueueEntry> const& horde);
-    bool CanQueue(Player* player, uint8 bracket, std::string& error) const;
+    bool CanQueuePlayer(Player* player, uint8 bracket, std::string& error) const;
+    bool CollectMembers(Player* leader, uint8 bracket, std::vector<Player*>& members, std::string& error) const;
+    bool BuildEntry(Player* leader, uint8 bracket, ArenaSoloQueueEntry& entry, std::string& error);
+    bool RevalidateEntry(ArenaSoloQueueEntry const& entry, uint8 bracket, std::string& error);
     bool BuildTeams(uint8 bracket, std::vector<ArenaSoloQueueEntry>& alliance,
         std::vector<ArenaSoloQueueEntry>& horde);
+    static uint32 TotalMMR(std::vector<ArenaSoloQueueEntry> const& side);
+    static uint32 SidePlayerCount(std::vector<ArenaSoloQueueEntry> const& side);
 
     ArenaSoloStats LoadStats(ObjectGuid guid, uint8 bracket);
     void SaveStats(ObjectGuid guid, uint8 bracket, ArenaSoloStats const& stats);

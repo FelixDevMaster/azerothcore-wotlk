@@ -19,6 +19,7 @@
 #include "Chat.h"
 #include "CommandScript.h"
 #include "Creature.h"
+#include "Group.h"
 #include "Player.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
@@ -29,12 +30,11 @@ using namespace Acore::ChatCommands;
 enum ArenaSoloGossipAction
 {
     GOSSIP_ACTION_ARENA_SOLO_MAIN        = 0,
-    GOSSIP_ACTION_ARENA_SOLO_QUEUE_1V1   = 1,
-    GOSSIP_ACTION_ARENA_SOLO_QUEUE_3V3   = 2,
-    GOSSIP_ACTION_ARENA_SOLO_LEAVE       = 3,
-    GOSSIP_ACTION_ARENA_SOLO_BOARD_1V1   = 4,
-    GOSSIP_ACTION_ARENA_SOLO_BOARD_3V3   = 5,
-    GOSSIP_ACTION_ARENA_SOLO_BACK        = 6
+    GOSSIP_ACTION_ARENA_SOLO_LEAVE       = 1,
+    GOSSIP_ACTION_ARENA_SOLO_BACK        = 2,
+    // The bracket id is added to these bases.
+    GOSSIP_ACTION_ARENA_SOLO_QUEUE_BASE  = 10,
+    GOSSIP_ACTION_ARENA_SOLO_BOARD_BASE  = 20
 };
 
 namespace
@@ -173,13 +173,33 @@ class ArenaSoloGroupScript : public GroupScript
 {
 public:
     ArenaSoloGroupScript() : GroupScript("ArenaSoloGroupScript", {
-        GROUPHOOK_ON_ADD_MEMBER
+        GROUPHOOK_ON_ADD_MEMBER,
+        GROUPHOOK_ON_REMOVE_MEMBER,
+        GROUPHOOK_ON_DISBAND
     }) { }
 
-    // Solo queue means solo: joining a group drops you from the queue.
+    // Changing party composition invalidates the queued entry, whether it was a
+    // solo player picking up a group or a queued 2v2 duo gaining a third member.
     void OnAddMember(Group* /*group*/, ObjectGuid guid) override
     {
         sArenaSoloMgr->RemovePlayer(guid);
+    }
+
+    void OnRemoveMember(Group* /*group*/, ObjectGuid guid, RemoveMethod /*method*/,
+        ObjectGuid /*kicker*/, char const* /*reason*/) override
+    {
+        sArenaSoloMgr->RemovePlayer(guid);
+    }
+
+    void OnDisband(Group* group) override
+    {
+        if (!group)
+            return;
+
+        group->DoForAllMembers([](Player* member)
+        {
+            sArenaSoloMgr->RemovePlayer(member->GetGUID());
+        });
     }
 };
 
@@ -207,28 +227,33 @@ public:
 
         if (sArenaSoloMgr->IsQueued(player->GetGUID()))
         {
-            AddGossipItemFor(player, GOSSIP_ICON_BATTLE, "Leave the solo queue",
+            AddGossipItemFor(player, GOSSIP_ICON_BATTLE, "Leave the arena queue",
                 GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_LEAVE);
         }
         else
         {
-            if (sArenaSoloMgr->IsBracketEnabled(ARENA_SOLO_BRACKET_1V1))
-                AddGossipItemFor(player, GOSSIP_ICON_BATTLE,
-                    Acore::StringFormat("Queue 1v1 ({} waiting)",
-                        sArenaSoloMgr->GetQueuedCount(ARENA_SOLO_BRACKET_1V1)),
-                    GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_QUEUE_1V1);
+            for (uint8 bracket = 0; bracket < ARENA_SOLO_BRACKET_MAX; ++bracket)
+            {
+                if (!sArenaSoloMgr->IsBracketEnabled(bracket))
+                    continue;
 
-            if (sArenaSoloMgr->IsBracketEnabled(ARENA_SOLO_BRACKET_3V3))
+                ArenaSoloBracketConfig const& config = sArenaSoloMgr->GetBracketConfig(bracket);
                 AddGossipItemFor(player, GOSSIP_ICON_BATTLE,
-                    Acore::StringFormat("Queue 3v3 SoloQ ({} waiting)",
-                        sArenaSoloMgr->GetQueuedCount(ARENA_SOLO_BRACKET_3V3)),
-                    GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_QUEUE_3V3);
+                    Acore::StringFormat("Queue {} — {} ({} waiting)",
+                        ArenaSoloMgr::GetBracketName(bracket),
+                        config.GroupSize > 1
+                            ? Acore::StringFormat("party of {}", config.GroupSize)
+                            : std::string("solo"),
+                        sArenaSoloMgr->GetQueuedCount(bracket)),
+                    GOSSIP_SENDER_MAIN, uint32(GOSSIP_ACTION_ARENA_SOLO_QUEUE_BASE) + bracket);
+            }
         }
 
-        AddGossipItemFor(player, GOSSIP_ICON_TABARD, "1v1 leaderboard",
-            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_BOARD_1V1);
-        AddGossipItemFor(player, GOSSIP_ICON_TABARD, "3v3 SoloQ leaderboard",
-            GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_BOARD_3V3);
+        for (uint8 bracket = 0; bracket < ARENA_SOLO_BRACKET_MAX; ++bracket)
+            if (sArenaSoloMgr->IsBracketEnabled(bracket))
+                AddGossipItemFor(player, GOSSIP_ICON_TABARD,
+                    Acore::StringFormat("{} leaderboard", ArenaSoloMgr::GetBracketName(bracket)),
+                    GOSSIP_SENDER_MAIN, uint32(GOSSIP_ACTION_ARENA_SOLO_BOARD_BASE) + bracket);
 
         SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
         return true;
@@ -239,54 +264,55 @@ public:
         ClearGossipMenuFor(player);
         std::string error;
 
-        switch (action)
+        if (action == GOSSIP_ACTION_ARENA_SOLO_LEAVE)
         {
-            case GOSSIP_ACTION_ARENA_SOLO_QUEUE_1V1:
-                if (!sArenaSoloMgr->Queue(player, ARENA_SOLO_BRACKET_1V1, error))
-                    ChatHandler(player->GetSession()).SendSysMessage(error);
-                CloseGossipMenuFor(player);
-                return true;
-            case GOSSIP_ACTION_ARENA_SOLO_QUEUE_3V3:
-                if (!sArenaSoloMgr->Queue(player, ARENA_SOLO_BRACKET_3V3, error))
-                    ChatHandler(player->GetSession()).SendSysMessage(error);
-                CloseGossipMenuFor(player);
-                return true;
-            case GOSSIP_ACTION_ARENA_SOLO_LEAVE:
-                if (!sArenaSoloMgr->Dequeue(player, error))
-                    ChatHandler(player->GetSession()).SendSysMessage(error);
-                CloseGossipMenuFor(player);
-                return true;
-            case GOSSIP_ACTION_ARENA_SOLO_BOARD_1V1:
-            case GOSSIP_ACTION_ARENA_SOLO_BOARD_3V3:
-            {
-                uint8 bracket = action == GOSSIP_ACTION_ARENA_SOLO_BOARD_1V1
-                    ? ARENA_SOLO_BRACKET_1V1 : ARENA_SOLO_BRACKET_3V3;
+            if (!sArenaSoloMgr->Dequeue(player, error))
+                ChatHandler(player->GetSession()).SendSysMessage(error);
 
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-                    Acore::StringFormat("=== {} ===", ArenaSoloMgr::GetBracketName(bracket)),
+            CloseGossipMenuFor(player);
+            return true;
+        }
+
+        uint32 const queueBase = GOSSIP_ACTION_ARENA_SOLO_QUEUE_BASE;
+        uint32 const boardBase = GOSSIP_ACTION_ARENA_SOLO_BOARD_BASE;
+        uint32 const bracketCount = ARENA_SOLO_BRACKET_MAX;
+
+        if (action >= queueBase && action < queueBase + bracketCount)
+        {
+            uint8 bracket = static_cast<uint8>(action - queueBase);
+            if (!sArenaSoloMgr->Queue(player, bracket, error))
+                ChatHandler(player->GetSession()).SendSysMessage(error);
+
+            CloseGossipMenuFor(player);
+            return true;
+        }
+
+        if (action >= boardBase && action < boardBase + bracketCount)
+        {
+            uint8 bracket = static_cast<uint8>(action - boardBase);
+
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+                Acore::StringFormat("=== {} ===", ArenaSoloMgr::GetBracketName(bracket)),
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_MAIN);
+
+            uint32 rank = 1;
+            for (PvPLeaderboardRow const& row : sArenaSoloMgr->GetLeaderboard(bracket, 10))
+            {
+                AddGossipItemFor(player, GOSSIP_ICON_TABARD,
+                    Acore::StringFormat("{}. {} — {} ({}-{})",
+                        rank, row.Name, row.Rating, row.Wins, row.Losses),
+                    GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_MAIN);
+                ++rank;
+            }
+
+            if (rank == 1)
+                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No games played yet.",
                     GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_MAIN);
 
-                uint32 rank = 1;
-                for (PvPLeaderboardRow const& row : sArenaSoloMgr->GetLeaderboard(bracket, 10))
-                {
-                    AddGossipItemFor(player, GOSSIP_ICON_TABARD,
-                        Acore::StringFormat("{}. {} — {} ({}-{})",
-                            rank, row.Name, row.Rating, row.Wins, row.Losses),
-                        GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_MAIN);
-                    ++rank;
-                }
-
-                if (rank == 1)
-                    AddGossipItemFor(player, GOSSIP_ICON_CHAT, "No games played yet.",
-                        GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_MAIN);
-
-                AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back",
-                    GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_BACK);
-                SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
-                return true;
-            }
-            default:
-                break;
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, "Back",
+                GOSSIP_SENDER_MAIN, GOSSIP_ACTION_ARENA_SOLO_BACK);
+            SendGossipMenuFor(player, player->GetGossipTextId(creature), creature);
+            return true;
         }
 
         return OnGossipHello(player, creature);
@@ -303,6 +329,7 @@ public:
         static ChatCommandTable soloTable =
         {
             { "1v1",    HandleQueue1v1,   SEC_PLAYER, Console::No },
+            { "2v2",    HandleQueue2v2,   SEC_PLAYER, Console::No },
             { "3v3",    HandleQueue3v3,   SEC_PLAYER, Console::No },
             { "leave",  HandleLeave,      SEC_PLAYER, Console::No },
             { "status", HandleStatus,     SEC_PLAYER, Console::No },
@@ -321,6 +348,11 @@ public:
     static bool HandleQueue1v1(ChatHandler* handler)
     {
         return HandleQueueCommand(handler, ARENA_SOLO_BRACKET_1V1);
+    }
+
+    static bool HandleQueue2v2(ChatHandler* handler)
+    {
+        return HandleQueueCommand(handler, ARENA_SOLO_BRACKET_2V2);
     }
 
     static bool HandleQueue3v3(ChatHandler* handler)
@@ -356,10 +388,12 @@ public:
                 SendBracketStats(handler, player, bracket);
 
         if (Optional<uint8> queued = sArenaSoloMgr->GetQueuedBracket(player->GetGUID()))
-            handler->PSendSysMessage("You are queued for {} ({} player(s) waiting).",
-                ArenaSoloMgr::GetBracketName(*queued), sArenaSoloMgr->GetQueuedCount(*queued));
+            handler->PSendSysMessage("You are queued for {} ({} entr{} waiting).",
+                ArenaSoloMgr::GetBracketName(*queued), sArenaSoloMgr->GetQueuedCount(*queued),
+                sArenaSoloMgr->GetQueuedCount(*queued) == 1 ? "y" : "ies");
         else
-            handler->SendSysMessage("Not queued. Use .solo 1v1 or .solo 3v3 (you must be ungrouped).");
+            handler->SendSysMessage(
+                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped, or .solo 2v2 in a party of 2.");
 
         return true;
     }
@@ -372,7 +406,7 @@ public:
             Optional<uint8> parsed = ArenaSoloMgr::ParseBracket(*bracketArg);
             if (!parsed)
             {
-                handler->SendSysMessage("Usage: .solo top [1v1|3v3]");
+                handler->SendSysMessage("Usage: .solo top [1v1|2v2|3v3]");
                 handler->SetSentErrorMessage(true);
                 return false;
             }
