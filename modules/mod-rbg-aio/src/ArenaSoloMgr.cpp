@@ -235,7 +235,8 @@ bool ArenaSoloMgr::IsBracketEnabled(uint8 bracket) const
 
 ArenaSoloBracketConfig const& ArenaSoloMgr::GetBracketConfig(uint8 bracket) const
 {
-    return _brackets[bracket < ARENA_SOLO_BRACKET_MAX ? bracket : ARENA_SOLO_BRACKET_1V1];
+    uint8 index = bracket < ARENA_SOLO_BRACKET_MAX ? bracket : uint8(ARENA_SOLO_BRACKET_1V1);
+    return _brackets[index];
 }
 
 uint32 ArenaSoloMgr::GetQueuedCount(uint8 bracket) const
@@ -982,11 +983,11 @@ void ArenaSoloMgr::CheckWeekReset()
     _weekStart = now;
     CharacterDatabase.Execute("UPDATE arena_solo_state SET week_start = {} WHERE id = 1", _weekStart);
     CharacterDatabase.Execute("UPDATE arena_solo_stats SET week_games = 0, week_wins = 0, week_points = 0");
-    for (auto& [key, stats] : _statsCache)
+    for (auto& kv : _statsCache)
     {
-        stats.WeekGames = 0;
-        stats.WeekWins = 0;
-        stats.WeekPoints = 0;
+        kv.second.WeekGames = 0;
+        kv.second.WeekWins = 0;
+        kv.second.WeekPoints = 0;
     }
 
     LOG_INFO("module.arenasolo", "Arena solo queue weekly stats reset.");

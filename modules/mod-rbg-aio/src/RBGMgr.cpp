@@ -786,11 +786,11 @@ void RBGMgr::CheckWeekReset()
     _weekStart = now;
     CharacterDatabase.Execute("UPDATE rbg_state SET week_start = {} WHERE id = 1", _weekStart);
     CharacterDatabase.Execute("UPDATE rbg_stats SET week_games = 0, week_wins = 0, week_conquest = 0");
-    for (auto& [guid, stats] : _statsCache)
+    for (auto& kv : _statsCache)
     {
-        stats.WeekGames = 0;
-        stats.WeekWins = 0;
-        stats.WeekConquest = 0;
+        kv.second.WeekGames = 0;
+        kv.second.WeekWins = 0;
+        kv.second.WeekConquest = 0;
     }
 
     LOG_INFO("module.rbg", "Rated BG weekly stats reset.");
