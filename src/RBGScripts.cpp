@@ -201,7 +201,7 @@ public:
         {
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, "=== Rated BG Leaderboard ===", GOSSIP_SENDER_MAIN, 0);
             uint32 rank = 1;
-            for (RBGLeaderboardRow const& row : sRBGMgr->GetLeaderboard(10))
+            for (PvPLeaderboardRow const& row : sRBGMgr->GetLeaderboard(10))
             {
                 AddGossipItemFor(player, GOSSIP_ICON_TABARD,
                     Acore::StringFormat("{}. {} — {} ({}-{})", rank, row.Name, row.Rating, row.Wins, row.Losses),
@@ -295,7 +295,7 @@ public:
     {
         handler->SendSysMessage("Rated Battleground leaderboard:");
         uint32 rank = 1;
-        for (RBGLeaderboardRow const& row : sRBGMgr->GetLeaderboard(15))
+        for (PvPLeaderboardRow const& row : sRBGMgr->GetLeaderboard(15))
         {
             handler->PSendSysMessage("{}. {} — {} ({}-{})", rank, row.Name, row.Rating, row.Wins, row.Losses);
             ++rank;
@@ -308,6 +308,8 @@ public:
     }
 };
 
+void AddSC_arena_solo_scripts();
+
 void Addmod_rbg_aioScripts()
 {
     new RBGWorldScript();
@@ -316,4 +318,6 @@ void Addmod_rbg_aioScripts()
     new RBGGroupScript();
     new npc_rbg_battlemaster();
     new rbg_commandscript();
+
+    AddSC_arena_solo_scripts();
 }

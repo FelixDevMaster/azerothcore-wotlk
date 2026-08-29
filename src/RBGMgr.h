@@ -19,6 +19,7 @@
 #define MODULE_RBG_MGR_H
 
 #include "ObjectGuid.h"
+#include "PvPShared.h"
 #include "SharedDefines.h"
 #include <list>
 #include <string>
@@ -64,14 +65,6 @@ struct RBGMatch
     std::vector<ObjectGuid> Horde;
 };
 
-struct RBGLeaderboardRow
-{
-    std::string Name;
-    uint32 Rating = 0;
-    uint32 Wins = 0;
-    uint32 Losses = 0;
-};
-
 class RBGMgr
 {
 public:
@@ -96,7 +89,7 @@ public:
     [[nodiscard]] uint32 GetNPCEntry() const { return _npcEntry; }
     [[nodiscard]] uint32 GetQueuedTeamCount() const { return static_cast<uint32>(_queue.size()); }
 
-    std::vector<RBGLeaderboardRow> GetLeaderboard(uint32 limit = 20);
+    std::vector<PvPLeaderboardRow> GetLeaderboard(uint32 limit = 20);
 
 private:
     RBGMgr() = default;
@@ -111,9 +104,6 @@ private:
     void SaveStats(ObjectGuid guid, RBGPlayerStats const& stats);
     void ApplyResult(ObjectGuid guid, uint32 opponentMMR, bool won);
     void CheckWeekReset();
-    int32 GetRatingMod(uint32 ownRating, uint32 opponentRating, bool won) const;
-    int32 GetMMRMod(uint32 ownMMR, uint32 opponentMMR, bool won) const;
-    static float GetChanceAgainst(uint32 ownRating, uint32 opponentRating);
     BattlegroundTypeId PickMap() const;
     void NotifyGroup(Group* group, std::string const& message) const;
     void GrantTitleIfNeeded(Player* player, uint32 rating) const;
@@ -135,10 +125,7 @@ private:
     uint32 _npcEntry = 190010;
     bool _announceQueue = false;
     bool _enableTitles = false;
-    float _winRatingModifier1 = 48.f;
-    float _winRatingModifier2 = 24.f;
-    float _loseRatingModifier = 24.f;
-    float _mmrModifier = 24.f;
+    PvPRating::EloConfig _elo;
 
     uint32 _updateTimer = 0;
     uint32 _weekStart = 0;
