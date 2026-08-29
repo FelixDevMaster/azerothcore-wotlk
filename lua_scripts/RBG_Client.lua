@@ -30,7 +30,7 @@ local L = {
     EMPTY = "No games recorded yet.",
     HINT_RBG = "Raid leader only. Exactly 10 players.",
     HINT_1V1 = "Solo only. Leave your group to queue.",
-    HINT_2V2 = "Party of 2 in the same 2v2 arena team. Leader queues.",
+    HINT_2V2 = "Party of 2. Each player has a personal 2v2 team. Leader queues.",
     HINT_3V3 = "Solo only. Teams are built as 1 healer + 2 damage.",
     SLASH = "/rbg to toggle this window."
 }
@@ -52,7 +52,7 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.EMPTY = "Todavia no hay partidas."
     L.HINT_RBG = "Solo el lider de banda. Exactamente 10 jugadores."
     L.HINT_1V1 = "Solo en solitario. Sal del grupo para encolar."
-    L.HINT_2V2 = "Grupo de 2 del mismo equipo de arena 2c2. Encola el lider."
+    L.HINT_2V2 = "Grupo de 2. Cada uno tiene su equipo 2c2 personal. Encola el lider."
     L.TEAM = "Equipo"
     L.HINT_3V3 = "Solo en solitario. Equipos de 1 sanador + 2 de dano."
     L.SLASH = "/rbg para abrir esta ventana."

@@ -100,10 +100,12 @@ RatedBG.MatchmakerRatingModifier = 24
 # ARENAS (1v1 personal, 2v2 arena team, 3v3 SoloQ personal)
 #
 # 1v1 and 3v3 keep a module-owned personal rating in arena_solo_stats.
-# 2v2 is the normal Lich King bracket: both players must be members of the
-# same 2v2 arena team. The match is created rated and the core writes
-# arena_team + arena_team_member (personalRating, week/season games).
-# ArenaSolo.2v2 honor/points knobs below are unused; the core pays those.
+# 2v2 gives each character a personal 2v2 arena_team (captain = character GUID)
+# on login or first queue. A party of two can queue without sharing a charter.
+# After the match the module writes arena_team + arena_team_member
+# (personalRating, week/season games) and character_arena_stats slot 0 (MMR).
+# ArenaSolo.2v2.HonorWin / HonorLoss are paid by the module. Weekly arena
+# points still come from the core team distribution.
 #
 #    ArenaSolo.Enable
 #        Description: Master switch for all three queues.

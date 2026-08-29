@@ -137,7 +137,7 @@ function Handlers.QueueSolo(player, bracket)
     local group = player:GetGroup()
 
     if bracket == BRACKET_2V2 then
-        -- LK 2v2: party of two that share a 2v2 arena team. C++ checks the team.
+        -- 2v2: party of two. C++ creates a personal arena team per player.
         if not group or group:GetLeaderGUID() ~= player:GetGUID() then
             player:SendBroadcastMessage("|cffff0000Arena 2v2:|r only the party leader can queue.")
             SendState(player, 0)

@@ -20,6 +20,7 @@
 #include "CommandScript.h"
 #include "Creature.h"
 #include "Group.h"
+#include "Log.h"
 #include "Player.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
@@ -49,7 +50,7 @@ void SendBracketStats(ChatHandler* handler, Player* player, uint8 bracket)
     if (sArenaSoloMgr->UsesCoreArenaTeam(bracket))
     {
         if (stats.TeamName.empty())
-            handler->PSendSysMessage("{} — not in a 2v2 arena team. Create or join one to queue.",
+            handler->PSendSysMessage("{} — personal 2v2 team not ready yet. Queue once to create it.",
                 ArenaSoloMgr::GetBracketName(bracket));
         else
             handler->PSendSysMessage("{} — {} personal / {} team rating ({}), {}-{} (week {}-{}).",
@@ -144,10 +145,23 @@ class ArenaSoloPlayerScript : public PlayerScript
 {
 public:
     ArenaSoloPlayerScript() : PlayerScript("ArenaSoloPlayerScript", {
+        PLAYERHOOK_ON_LOGIN,
         PLAYERHOOK_ON_LOGOUT,
         PLAYERHOOK_CAN_JOIN_IN_BATTLEGROUND_QUEUE,
         PLAYERHOOK_CAN_JOIN_IN_ARENA_QUEUE
     }) { }
+
+    void OnPlayerLogin(Player* player) override
+    {
+        if (!player || !sArenaSoloMgr->IsEnabled() || !sArenaSoloMgr->IsBracketEnabled(ARENA_SOLO_BRACKET_2V2)
+            || !sArenaSoloMgr->UsesCoreArenaTeam(ARENA_SOLO_BRACKET_2V2))
+            return;
+
+        std::string error;
+        if (!sArenaSoloMgr->EnsurePersonalArenaTeam(player, error))
+            LOG_DEBUG("module.arenasolo", "Could not ensure personal 2v2 team for {}: {}",
+                player->GetName(), error);
+    }
 
     void OnPlayerLogout(Player* player) override
     {
@@ -252,7 +266,7 @@ public:
                 ArenaSoloBracketConfig const& config = sArenaSoloMgr->GetBracketConfig(bracket);
                 std::string queueKind = "solo";
                 if (config.UseCoreArenaTeam)
-                    queueKind = "same 2v2 arena team";
+                    queueKind = "party of 2, personal teams";
                 else if (config.GroupSize > 1)
                     queueKind = Acore::StringFormat("party of {}", config.GroupSize);
 
@@ -409,7 +423,7 @@ public:
         else
             handler->SendSysMessage(
                 "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped, "
-                "or .solo 2v2 in a party of 2 that share a 2v2 arena team.");
+                "or .solo 2v2 in a party of 2 (each player gets a personal 2v2 team).");
 
         return true;
     }
