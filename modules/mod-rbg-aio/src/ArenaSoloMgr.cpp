@@ -382,9 +382,19 @@ ArenaTeam* FindPersonalArenaTeam(ObjectGuid guid, uint8 type)
 
 std::string MakePersonalArenaTeamName(Player* player, uint8 type)
 {
-    std::string name = type == ARENA_TEAM_5v5
-        ? Acore::StringFormat("{}-5s", player->GetName())
-        : player->GetName();
+    std::string name;
+    if (type == ARENA_TEAM_5v5)
+    {
+        // Fits in arena_team.name (varchar 24): 12-char character + " 3vs3 soloq".
+        std::string const label = " 3vs3 soloq";
+        name = player->GetName();
+        if (name.size() + label.size() > PERSONAL_TEAM_NAME_MAX)
+            name.resize(PERSONAL_TEAM_NAME_MAX - label.size());
+        name += label;
+    }
+    else
+        name = player->GetName();
+
     if (name.size() > PERSONAL_TEAM_NAME_MAX)
         name.resize(PERSONAL_TEAM_NAME_MAX);
 
@@ -401,6 +411,24 @@ std::string MakePersonalArenaTeamName(Player* player, uint8 type)
         name.resize(PERSONAL_TEAM_NAME_MAX);
 
     return name;
+}
+
+void RenameLegacySoloQTeam(ArenaTeam* team, Player* player, uint8 type)
+{
+    if (!team || !player || type != ARENA_TEAM_5v5)
+        return;
+
+    std::string const& current = team->GetName();
+    if (current.size() < 3 || current.compare(current.size() - 3, 3, "-5s") != 0)
+        return;
+
+    std::string wanted = MakePersonalArenaTeamName(player, type);
+    if (wanted == current)
+        return;
+
+    if (team->SetName(wanted))
+        LOG_INFO("module.arenasolo", "Renamed personal 3v3 team {} -> {} ({})",
+            current, wanted, player->GetGUID().ToString());
 }
 }
 
@@ -421,13 +449,17 @@ bool ArenaSoloMgr::EnsurePersonalArenaTeam(Player* player, uint8 bracket, std::s
     uint8 type = _brackets[bracket].ArenaTeamType;
     uint8 slot = _brackets[bracket].ArenaTeamSlot;
 
-    if (FindPersonalArenaTeam(player->GetGUID(), type))
+    if (ArenaTeam* team = FindPersonalArenaTeam(player->GetGUID(), type))
+    {
+        RenameLegacySoloQTeam(team, player, type);
         return true;
+    }
 
     if (ArenaTeam* existing = sArenaTeamMgr->GetArenaTeamByCaptain(player->GetGUID(), type))
     {
         if (!player->GetArenaTeamId(slot) && existing->IsMember(player->GetGUID()))
             player->SetInArenaTeam(existing->GetId(), slot, type);
+        RenameLegacySoloQTeam(existing, player, type);
         return true;
     }
 
