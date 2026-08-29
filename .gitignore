@@ -11,6 +11,8 @@
 !/modules/CMakeLists.txt
 !/modules/*.h
 !/modules/*.cmake
+!/modules/mod-rbg-aio/
+!/modules/mod-rbg-aio/**
 /build*/
 /var/*
 !/var/build/.gitkeep

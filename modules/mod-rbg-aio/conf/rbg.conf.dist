@@ -1,0 +1,97 @@
+#
+# Rated Battlegrounds (MoP-style) for 3.3.5a
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# RATED BATTLEGROUNDS
+#
+#    RatedBG.Enable
+#        Description: Enable the Rated Battleground queue, commands, and NPC.
+#        Default:     1
+#
+#    RatedBG.MinLevel
+#        Description: Minimum character level required to queue.
+#        Default:     80
+#
+#    RatedBG.TeamSize
+#        Description: Players required per team (MoP RBGs are 10v10).
+#        Default:     10
+#
+#    RatedBG.Maps
+#        Description: Comma-separated BattlegroundTypeId pool.
+#                     2 = Warsong Gulch, 3 = Arathi Basin, 7 = Eye of the Storm,
+#                     9 = Strand of the Ancients. AV (1) and IoC (30) are omitted
+#                     because they are 40-player maps.
+#        Default:     "2,3,7,9"
+#
+#    RatedBG.AllowSameFaction
+#        Description: Allow two groups of the same faction to be matched (assigned
+#                     to opposite BG sides). Healing/buffs between sides need a
+#                     cross-faction BG module. Leave at 0 for Alliance vs Horde only.
+#        Default:     0
+#
+#    RatedBG.StartRating / RatedBG.StartMMR
+#        Description: Initial personal rating and matchmaking rating.
+#        Default:     1500 / 1500
+#
+#    RatedBG.MaxRatingDiff
+#        Description: Starting MMR window used to pair teams.
+#        Default:     150
+#
+#    RatedBG.RatingDiscardTimer
+#        Description: After this many milliseconds in queue, MMR is ignored (arena-style).
+#        Default:     300000 (5 minutes)
+#
+#    RatedBG.QueueUpdateInterval
+#        Description: How often the matcher runs, in milliseconds.
+#        Default:     1000
+#
+#    RatedBG.HonorWin / RatedBG.HonorLoss
+#        Description: Extra honor awarded at the end of an RBG (on top of BG honor).
+#        Default:     378 / 189
+#
+#    RatedBG.ArenaPointsWinBase / RatedBG.ArenaPointsWinScale
+#        Description: Arena points granted to winners (LK stand-in for Conquest).
+#                     Final amount scales with personal rating and is capped weekly.
+#        Default:     180 / 1.3
+#
+#    RatedBG.WeeklyCap
+#        Description: Weekly arena-point cap from RBG wins (MoP Conquest-style).
+#        Default:     1650
+#
+#    RatedBG.NPCEntry
+#        Description: creature_template.entry of the RBG battlemaster (must match SQL).
+#        Default:     190010
+#
+#    RatedBG.AnnounceQueue
+#        Description: Broadcast a world message when a team queues.
+#        Default:     0
+#
+#    RatedBG.EnableTitles
+#        Description: Grant legacy PvP rank titles as rating thresholds are reached.
+#        Default:     0
+#
+
+RatedBG.Enable = 1
+RatedBG.MinLevel = 80
+RatedBG.TeamSize = 10
+RatedBG.Maps = "2,3,7,9"
+RatedBG.AllowSameFaction = 0
+RatedBG.StartRating = 1500
+RatedBG.StartMMR = 1500
+RatedBG.MaxRatingDiff = 150
+RatedBG.RatingDiscardTimer = 300000
+RatedBG.QueueUpdateInterval = 1000
+RatedBG.HonorWin = 378
+RatedBG.HonorLoss = 189
+RatedBG.ArenaPointsWinBase = 180
+RatedBG.ArenaPointsWinScale = 1.3
+RatedBG.WeeklyCap = 1650
+RatedBG.NPCEntry = 190010
+RatedBG.AnnounceQueue = 0
+RatedBG.EnableTitles = 0
+RatedBG.WinRatingModifier1 = 48
+RatedBG.WinRatingModifier2 = 24
+RatedBG.LoseRatingModifier = 24
+RatedBG.MatchmakerRatingModifier = 24
