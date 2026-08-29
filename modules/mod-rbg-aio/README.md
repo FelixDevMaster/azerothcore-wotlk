@@ -1,6 +1,6 @@
 # Rated PvP: RBG 10v10, 1v1, 2v2 and 3v3 SoloQ
 
-Sistema de PvP puntuado para AzerothCore 3.3.5a al estilo Mists of Pandaria: campos de batalla puntuados 10c10, arenas 1c1, arenas 2c2 y arenas 3c3 en solitario. **El índice es personal en todas las colas, no por equipos de arena.** Incluye MMR, honor, puntos de arena e interfaz AIO (`/rbg`).
+Sistema de PvP puntuado para AzerothCore 3.3.5a: campos de batalla puntuados 10c10, arenas 1c1 y 3c3 en solitario (índice personal) y arenas 2c2 **con equipo de arena normal** (`arena_team` / `arena_team_member`). Incluye MMR, honor, puntos de arena e interfaz AIO (`/rbg`).
 
 ---
 
@@ -10,10 +10,10 @@ Rated PvP for AzerothCore 3.3.5a with four queues:
 | --- | --- | --- |
 | Rated Battleground | 10 | premade raid of 10, leader queues |
 | 1v1 Arena | 1 | solo |
-| 2v2 Arena | 2 | party of 2, leader queues |
+| 2v2 Arena | 2 | party of 2 in the same 2v2 arena team, leader queues |
 | 3v3 SoloQ | 3 | solo, sides built as 1 healer + 2 damage |
 
-All four share the same rating model, and it is **MoP-style throughout: rating is personal, never per arena team.** Each character has a personal rating plus a hidden matchmaking rating (MMR) using the arena ELO curve, with honor and arena points on top and a weekly point cap. Nothing is written to `arena_team`, so players never create, pay for, or maintain an arena team — for 2v2 you just group with a partner and queue.
+1v1 and 3v3 SoloQ keep a **module-owned personal rating** (MoP-style, stored in `arena_solo_stats`). **2v2 is the normal Lich King bracket:** both players must belong to the same 2v2 `arena_team`, the match is created rated, and the core writes **team rating** to `arena_team` and **personal rating** to `arena_team_member` (plus MMR in `character_arena_stats` slot 0). The in-game arena team pane, inspect, and weekly arena points all see those 2v2 games.
 
 ## Why C++ plus Lua
 
@@ -60,7 +60,7 @@ The client addon is delivered by the server, so players only need the AIO client
 
 **1v1 / 3v3 SoloQ** — you must be **ungrouped**. Queue with `.solo 1v1` / `.solo 3v3`, the NPC, or the AIO button. The server picks opponents by MMR and, for 3v3, builds each side as 1 healer + 2 damage (healer detection uses the character's talent spec).
 
-**2v2** — group with a partner in a normal party of two; the **party leader** queues with `.solo 2v2`, the NPC, or the AIO button. No arena team is involved: the entry is matched on the pair's average MMR, and each of the two gets their own personal rating change afterwards. If the party gains or loses a member while queued, the entry is dropped.
+**2v2** — both characters must already be in the **same 2v2 arena team** (create it with a 2v2 charter like any other team). Group as a party of two; the **party leader** queues with `.solo 2v2`, the NPC, or the AIO button. Matchmaking uses the team's rating and the pair's MMR from `arena_team_member`. When the match ends, `Arena::EndBattleground` updates `arena_team` / `arena_team_member` the same way a normal rated 2v2 would. If the party or the team changes while queued, the entry is dropped.
 
 When a match is found everyone gets the standard battleground/arena invite popup. Rating, honor and arena points are applied when the match ends.
 
@@ -74,7 +74,8 @@ See `conf/rbg.conf.dist` for the full list.
 - `RatedBG.AllowSameFaction = 0` — Alliance vs Horde only for RBGs.
 - `ArenaSolo.CrossFaction = 1` — lets the arena queues mix factions inside a team and match same-faction sides. These queues barely fill without it, and the core already handles cross-faction arena groups.
 - `ArenaSolo.3v3.RequireHealer = 1` — enforce 1 healer per side. Off means any six players.
-- `ArenaSolo.<1v1|2v2|3v3>.*` — per-bracket rating, rewards and weekly cap.
+- `ArenaSolo.<1v1|3v3>.*` — personal rating, rewards and weekly cap for the solo brackets.
+- `ArenaSolo.2v2.*` — queue window and enable flag only; rating comes from the core arena team.
 - `RatedBG.EnableTitles = 0` — optional legacy PvP rank titles at rating breakpoints.
 
 For a first test with few characters, drop `RatedBG.TeamSize` to 1 or 2 so a single GM can exercise the RBG path.
@@ -82,10 +83,10 @@ For a first test with few characters, drop `RatedBG.TeamSize` to 1 or 2 so a sin
 ## Design notes
 
 - **RBGs** are created as rated battlegrounds: objectives, flags and boats behave exactly as in unrated BGs, scaled to 10 per side.
-- **The 1v1, 2v2 and 3v3 arenas are created as skirmish arenas on purpose.** The core's rated arena path (`Arena::EndBattleground`) dereferences persistent arena teams without null checks, and personal-rating queues have no such teams — so this module keeps the arena unrated for the core and applies its own rating layer instead. Gameplay (preparation aura, shadow sight, gates, scoreboard) is identical; the only cosmetic loss is the client's rating-change column, which the module reports in chat and in the AIO window.
+- **2v2 is created rated** and the core updates `arena_team` / `arena_team_member`. **1v1 and 3v3 stay skirmish** because those queues have no persistent arena team; the module applies its own rating in `OnBattlegroundEnd` for those two only.
 - Rating uses the same chance-to-win curve as arena: `1 / (1 + 10^((opponent - own) / 650))`.
 - 1v1 rides on the core's 2v2 arena type with the per-side cap lowered to one, so no custom arena type or slot has to be registered.
-- Every player is queued as their own one-man group and then invited to the side the matcher picked; the battleground builds the team's raid group itself, so party frames and cross-heals work. Queueing a real party object would only make the core rebuild it.
+- 1v1 / 3v3 players are queued as one-man groups; 2v2 is queued as the real party so `InviteGroupToBG` can set `Battleground::m_ArenaTeamIds`. The battleground still builds the raid group.
 - Sides are balanced by combined MMR, so a strong and a weak player do not end up together against two average ones.
 - Joining or leaving a group, logging out, or picking up Deserter drops you from an arena queue.
 - Bracket ids are persisted in `arena_solo_stats.bracket` (1v1 = 0, 3v3 = 1, 2v2 = 2), so they are never renumbered.

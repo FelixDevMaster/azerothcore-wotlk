@@ -44,7 +44,39 @@ local function LoadRbgStats(player)
     }
 end
 
+local function LoadArenaTeamMemberStats(player)
+    -- LK 2v2: personal rating lives on arena_team_member, MMR on character_arena_stats.slot 0.
+    local q = CharDBQuery(string.format(
+        "SELECT atm.personalRating, IFNULL(cas.matchMakerRating, 0), atm.seasonGames, atm.seasonWins, "
+            .. "atm.weekGames, atm.weekWins, at.rating, atm.personalRating, at.name "
+            .. "FROM arena_team_member atm "
+            .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = 2 "
+            .. "LEFT JOIN character_arena_stats cas ON cas.guid = atm.guid AND cas.slot = 0 "
+            .. "WHERE atm.guid = %d", GuidLow(player)))
+    if not q then
+        return { rating = 0, mmr = 0, games = 0, wins = 0,
+            weekGames = 0, weekWins = 0, weekPoints = 0, highest = 0,
+            teamRating = 0, teamName = "" }
+    end
+    return {
+        rating = q:GetUInt32(0),
+        mmr = q:GetUInt32(1),
+        games = q:GetUInt32(2),
+        wins = q:GetUInt32(3),
+        weekGames = q:GetUInt32(4),
+        weekWins = q:GetUInt32(5),
+        weekPoints = 0,
+        highest = q:GetUInt32(7),
+        teamRating = q:GetUInt32(6),
+        teamName = q:GetString(8) or ""
+    }
+end
+
 local function LoadSoloStats(player, bracket)
+    if bracket == BRACKET_2V2 then
+        return LoadArenaTeamMemberStats(player)
+    end
+
     local q = CharDBQuery(string.format(
         "SELECT rating, mmr, games, wins, week_games, week_wins, week_points, highest_rating "
             .. "FROM arena_solo_stats WHERE guid = %d AND bracket = %d", GuidLow(player), bracket))
@@ -105,7 +137,7 @@ function Handlers.QueueSolo(player, bracket)
     local group = player:GetGroup()
 
     if bracket == BRACKET_2V2 then
-        -- MoP-style 2v2: a party of two, no arena team.
+        -- LK 2v2: party of two that share a 2v2 arena team. C++ checks the team.
         if not group or group:GetLeaderGUID() ~= player:GetGUID() then
             player:SendBroadcastMessage("|cffff0000Arena 2v2:|r only the party leader can queue.")
             SendState(player, 0)
@@ -159,6 +191,12 @@ function Handlers.RequestBoard(player, tab)
     if tab == 1 then
         query = "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM rbg_stats s "
             .. "INNER JOIN characters c ON c.guid = s.guid ORDER BY s.rating DESC, s.wins DESC LIMIT 15"
+    elseif tab == 3 then
+        query = "SELECT c.name, atm.personalRating, atm.seasonWins, (atm.seasonGames - atm.seasonWins) "
+            .. "FROM arena_team_member atm "
+            .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = 2 "
+            .. "INNER JOIN characters c ON c.guid = atm.guid "
+            .. "ORDER BY atm.personalRating DESC, atm.seasonWins DESC LIMIT 15"
     else
         query = string.format(
             "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM arena_solo_stats s "

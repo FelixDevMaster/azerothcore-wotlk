@@ -97,10 +97,13 @@ RatedBG.LoseRatingModifier = 24
 RatedBG.MatchmakerRatingModifier = 24
 
 ###################################################################################################
-# PERSONAL-RATING ARENAS (1v1, 2v2, 3v3)
+# ARENAS (1v1 personal, 2v2 arena team, 3v3 SoloQ personal)
 #
-# Rating is always personal, never per arena team, exactly like Mists of Pandaria.
-# 1v1 and 3v3 are solo entry; 2v2 is entered as a party of two.
+# 1v1 and 3v3 keep a module-owned personal rating in arena_solo_stats.
+# 2v2 is the normal Lich King bracket: both players must be members of the
+# same 2v2 arena team. The match is created rated and the core writes
+# arena_team + arena_team_member (personalRating, week/season games).
+# ArenaSolo.2v2 honor/points knobs below are unused; the core pays those.
 #
 #    ArenaSolo.Enable
 #        Description: Master switch for all three queues.

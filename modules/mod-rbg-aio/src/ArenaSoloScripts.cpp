@@ -46,6 +46,18 @@ void SendBracketStats(ChatHandler* handler, Player* player, uint8 bracket)
     uint32 losses = stats.Games > stats.Wins ? stats.Games - stats.Wins : 0;
     uint32 weekLosses = stats.WeekGames > stats.WeekWins ? stats.WeekGames - stats.WeekWins : 0;
 
+    if (sArenaSoloMgr->UsesCoreArenaTeam(bracket))
+    {
+        if (stats.TeamName.empty())
+            handler->PSendSysMessage("{} — not in a 2v2 arena team. Create or join one to queue.",
+                ArenaSoloMgr::GetBracketName(bracket));
+        else
+            handler->PSendSysMessage("{} — {} personal / {} team rating ({}), {}-{} (week {}-{}).",
+                ArenaSoloMgr::GetBracketName(bracket), stats.Rating, stats.TeamRating, stats.TeamName,
+                stats.Wins, losses, stats.WeekWins, weekLosses);
+        return;
+    }
+
     handler->PSendSysMessage("{} — {} rating, {} MMR, {}-{} (week {}-{}, points {}/{}).",
         ArenaSoloMgr::GetBracketName(bracket), stats.Rating, stats.MMR, stats.Wins, losses,
         stats.WeekWins, weekLosses, stats.WeekPoints, config.WeeklyCap);
@@ -238,12 +250,15 @@ public:
                     continue;
 
                 ArenaSoloBracketConfig const& config = sArenaSoloMgr->GetBracketConfig(bracket);
+                std::string queueKind = "solo";
+                if (config.UseCoreArenaTeam)
+                    queueKind = "same 2v2 arena team";
+                else if (config.GroupSize > 1)
+                    queueKind = Acore::StringFormat("party of {}", config.GroupSize);
+
                 AddGossipItemFor(player, GOSSIP_ICON_BATTLE,
                     Acore::StringFormat("Queue {} — {} ({} waiting)",
-                        ArenaSoloMgr::GetBracketName(bracket),
-                        config.GroupSize > 1
-                            ? Acore::StringFormat("party of {}", config.GroupSize)
-                            : std::string("solo"),
+                        ArenaSoloMgr::GetBracketName(bracket), queueKind,
                         sArenaSoloMgr->GetQueuedCount(bracket)),
                     GOSSIP_SENDER_MAIN, uint32(GOSSIP_ACTION_ARENA_SOLO_QUEUE_BASE) + bracket);
             }
@@ -393,7 +408,8 @@ public:
                 sArenaSoloMgr->GetQueuedCount(*queued) == 1 ? "y" : "ies");
         else
             handler->SendSysMessage(
-                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped, or .solo 2v2 in a party of 2.");
+                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped, "
+                "or .solo 2v2 in a party of 2 that share a 2v2 arena team.");
 
         return true;
     }

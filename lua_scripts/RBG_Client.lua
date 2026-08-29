@@ -26,10 +26,11 @@ local L = {
     RECORD = "Record",
     WEEK = "Weekly",
     POINTS = "Arena Points",
+    TEAM = "Team",
     EMPTY = "No games recorded yet.",
     HINT_RBG = "Raid leader only. Exactly 10 players.",
     HINT_1V1 = "Solo only. Leave your group to queue.",
-    HINT_2V2 = "Party of 2, leader queues. Personal rating, no arena team.",
+    HINT_2V2 = "Party of 2 in the same 2v2 arena team. Leader queues.",
     HINT_3V3 = "Solo only. Teams are built as 1 healer + 2 damage.",
     SLASH = "/rbg to toggle this window."
 }
@@ -51,7 +52,8 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.EMPTY = "Todavia no hay partidas."
     L.HINT_RBG = "Solo el lider de banda. Exactamente 10 jugadores."
     L.HINT_1V1 = "Solo en solitario. Sal del grupo para encolar."
-    L.HINT_2V2 = "Grupo de 2, encola el lider. Indice personal, sin equipo de arena."
+    L.HINT_2V2 = "Grupo de 2 del mismo equipo de arena 2c2. Encola el lider."
+    L.TEAM = "Equipo"
     L.HINT_3V3 = "Solo en solitario. Equipos de 1 sanador + 2 de dano."
     L.SLASH = "/rbg para abrir esta ventana."
 end
@@ -274,7 +276,15 @@ local function Refresh()
 
     local weekLosses = math.max(0, stats.weekGames - stats.weekWins)
     weekFS:SetText(string.format("%s  %d - %d", L.WEEK, stats.weekWins, weekLosses))
-    pointsFS:SetText(string.format("%s  %d", L.POINTS, stats.weekPoints))
+    if state.tab == TAB_2V2 then
+        if stats.teamName and stats.teamName ~= "" then
+            pointsFS:SetText(string.format("%s  %s  (%d)", L.TEAM, stats.teamName, stats.teamRating or 0))
+        else
+            pointsFS:SetText(string.format("%s  —", L.TEAM))
+        end
+    else
+        pointsFS:SetText(string.format("%s  %d", L.POINTS, stats.weekPoints))
+    end
 
     if state.tab == TAB_RBG then
         hintFS:SetText(L.HINT_RBG)
