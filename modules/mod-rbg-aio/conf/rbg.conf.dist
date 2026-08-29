@@ -95,3 +95,85 @@ RatedBG.WinRatingModifier1 = 48
 RatedBG.WinRatingModifier2 = 24
 RatedBG.LoseRatingModifier = 24
 RatedBG.MatchmakerRatingModifier = 24
+
+###################################################################################################
+# SOLO QUEUE ARENAS (1v1 and 3v3)
+#
+#    ArenaSolo.Enable
+#        Description: Master switch for both solo queues.
+#        Default:     1
+#
+#    ArenaSolo.CrossFaction
+#        Description: Allow mixing factions inside a team. Solo queue barely fills
+#                     without this, and the core already handles cross-faction
+#                     arena groups. Set to 0 for Alliance vs Horde only.
+#        Default:     1
+#
+#    ArenaSolo.QueueUpdateInterval
+#        Description: How often the matcher runs, in milliseconds.
+#        Default:     1000
+#
+#    ArenaSolo.NPCEntry
+#        Description: creature_template.entry of the solo queue NPC (must match SQL).
+#        Default:     190011
+#
+#    ArenaSolo.AnnounceQueue
+#        Description: Broadcast a world message when someone queues.
+#        Default:     0
+#
+#    ArenaSolo.3v3.RequireHealer
+#        Description: Require one healer per team in 3v3 SoloQ (1 healer + 2 damage).
+#                     Turning this off matches any six players.
+#        Default:     1
+#
+#    Per-bracket options, with <B> being 1v1 or 3v3:
+#        ArenaSolo.<B>.Enable                    (default 1)
+#        ArenaSolo.<B>.MinLevel                  (default 80)
+#        ArenaSolo.<B>.StartRating / StartMMR     (default 1500 / 1500)
+#        ArenaSolo.<B>.MaxRatingDiff             (default 150)
+#        ArenaSolo.<B>.RatingDiscardTimer        (default 300000, ms)
+#        ArenaSolo.<B>.HonorWin / HonorLoss      (default 189 / 94)
+#        ArenaSolo.<B>.ArenaPointsWin            (default 30)
+#        ArenaSolo.<B>.WeeklyCap                 (default 1350)
+#        ArenaSolo.<B>.WinRatingModifier1        (default 48)
+#        ArenaSolo.<B>.WinRatingModifier2        (default 24)
+#        ArenaSolo.<B>.LoseRatingModifier        (default 24)
+#        ArenaSolo.<B>.MatchmakerRatingModifier  (default 24)
+#
+
+ArenaSolo.Enable = 1
+ArenaSolo.CrossFaction = 1
+ArenaSolo.QueueUpdateInterval = 1000
+ArenaSolo.NPCEntry = 190011
+ArenaSolo.AnnounceQueue = 0
+ArenaSolo.3v3.RequireHealer = 1
+
+ArenaSolo.1v1.Enable = 1
+ArenaSolo.1v1.MinLevel = 80
+ArenaSolo.1v1.StartRating = 1500
+ArenaSolo.1v1.StartMMR = 1500
+ArenaSolo.1v1.MaxRatingDiff = 150
+ArenaSolo.1v1.RatingDiscardTimer = 300000
+ArenaSolo.1v1.HonorWin = 189
+ArenaSolo.1v1.HonorLoss = 94
+ArenaSolo.1v1.ArenaPointsWin = 25
+ArenaSolo.1v1.WeeklyCap = 1000
+ArenaSolo.1v1.WinRatingModifier1 = 48
+ArenaSolo.1v1.WinRatingModifier2 = 24
+ArenaSolo.1v1.LoseRatingModifier = 24
+ArenaSolo.1v1.MatchmakerRatingModifier = 24
+
+ArenaSolo.3v3.Enable = 1
+ArenaSolo.3v3.MinLevel = 80
+ArenaSolo.3v3.StartRating = 1500
+ArenaSolo.3v3.StartMMR = 1500
+ArenaSolo.3v3.MaxRatingDiff = 150
+ArenaSolo.3v3.RatingDiscardTimer = 300000
+ArenaSolo.3v3.HonorWin = 189
+ArenaSolo.3v3.HonorLoss = 94
+ArenaSolo.3v3.ArenaPointsWin = 35
+ArenaSolo.3v3.WeeklyCap = 1350
+ArenaSolo.3v3.WinRatingModifier1 = 48
+ArenaSolo.3v3.WinRatingModifier2 = 24
+ArenaSolo.3v3.LoseRatingModifier = 24
+ArenaSolo.3v3.MatchmakerRatingModifier = 24

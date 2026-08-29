@@ -110,10 +110,10 @@ void RBGMgr::LoadConfig(bool /*reload*/)
     _npcEntry = sConfigMgr->GetOption<uint32>("RatedBG.NPCEntry", 190010);
     _announceQueue = sConfigMgr->GetOption<bool>("RatedBG.AnnounceQueue", false);
     _enableTitles = sConfigMgr->GetOption<bool>("RatedBG.EnableTitles", false);
-    _winRatingModifier1 = sConfigMgr->GetOption<float>("RatedBG.WinRatingModifier1", 48.f);
-    _winRatingModifier2 = sConfigMgr->GetOption<float>("RatedBG.WinRatingModifier2", 24.f);
-    _loseRatingModifier = sConfigMgr->GetOption<float>("RatedBG.LoseRatingModifier", 24.f);
-    _mmrModifier = sConfigMgr->GetOption<float>("RatedBG.MatchmakerRatingModifier", 24.f);
+    _elo.WinModifierLow = sConfigMgr->GetOption<float>("RatedBG.WinRatingModifier1", 48.f);
+    _elo.WinModifierHigh = sConfigMgr->GetOption<float>("RatedBG.WinRatingModifier2", 24.f);
+    _elo.LoseModifier = sConfigMgr->GetOption<float>("RatedBG.LoseRatingModifier", 24.f);
+    _elo.MatchmakerModifier = sConfigMgr->GetOption<float>("RatedBG.MatchmakerRatingModifier", 24.f);
 
     if (_teamSize < 1)
         _teamSize = 1;
@@ -480,46 +480,6 @@ uint32 RBGMgr::AverageStat(std::vector<ObjectGuid> const& members, bool mmr)
     return static_cast<uint32>(total / members.size());
 }
 
-float RBGMgr::GetChanceAgainst(uint32 ownRating, uint32 opponentRating)
-{
-    return 1.0f / (1.0f + std::exp(std::log(10.0f) *
-        (static_cast<float>(opponentRating) - static_cast<float>(ownRating)) / 650.0f));
-}
-
-int32 RBGMgr::GetRatingMod(uint32 ownRating, uint32 opponentRating, bool won) const
-{
-    float chance = GetChanceAgainst(ownRating, opponentRating);
-    float mod = 0.f;
-
-    if (won)
-    {
-        if (ownRating < 1300)
-        {
-            if (ownRating < 1000)
-                mod = _winRatingModifier1 * (1.0f - chance);
-            else
-            {
-                mod = ((_winRatingModifier1 / 2.0f) +
-                    ((_winRatingModifier1 / 2.0f) * (1300.0f - float(ownRating)) / 300.0f))
-                    * (1.0f - chance);
-            }
-        }
-        else
-            mod = _winRatingModifier2 * (1.0f - chance);
-    }
-    else
-        mod = _loseRatingModifier * (-chance);
-
-    return static_cast<int32>(std::ceil(mod));
-}
-
-int32 RBGMgr::GetMMRMod(uint32 ownMMR, uint32 opponentMMR, bool won) const
-{
-    float chance = GetChanceAgainst(ownMMR, opponentMMR);
-    float wonMod = won ? 1.0f : 0.0f;
-    return static_cast<int32>(std::ceil((wonMod - chance) * _mmrModifier));
-}
-
 BattlegroundTypeId RBGMgr::PickMap() const
 {
     if (_maps.empty())
@@ -578,11 +538,7 @@ void RBGMgr::TryMatch()
     for (auto itrA = _queue.begin(); itrA != _queue.end(); ++itrA)
     {
         uint32 waitA = now > itrA->JoinTime ? now - itrA->JoinTime : 0;
-        uint32 windowA = _maxRatingDiff;
-        if (_ratingDiscardTimer && waitA >= _ratingDiscardTimer)
-            windowA = 10000;
-        else if (_ratingDiscardTimer)
-            windowA += (waitA * 400) / _ratingDiscardTimer;
+        uint32 windowA = PvPRating::MatchmakingWindow(_maxRatingDiff, waitA, _ratingDiscardTimer);
 
         auto itrB = itrA;
         ++itrB;
@@ -592,11 +548,7 @@ void RBGMgr::TryMatch()
                 continue;
 
             uint32 waitB = now > itrB->JoinTime ? now - itrB->JoinTime : 0;
-            uint32 windowB = _maxRatingDiff;
-            if (_ratingDiscardTimer && waitB >= _ratingDiscardTimer)
-                windowB = 10000;
-            else if (_ratingDiscardTimer)
-                windowB += (waitB * 400) / _ratingDiscardTimer;
+            uint32 windowB = PvPRating::MatchmakingWindow(_maxRatingDiff, waitB, _ratingDiscardTimer);
 
             uint32 window = std::max(windowA, windowB);
             uint32 diff = itrA->MMR > itrB->MMR ? itrA->MMR - itrB->MMR : itrB->MMR - itrA->MMR;
@@ -713,8 +665,8 @@ void RBGMgr::ApplyResult(ObjectGuid guid, uint32 opponentMMR, bool won)
 {
     RBGPlayerStats stats = GetStats(guid);
     uint32 oldRating = stats.Rating;
-    int32 ratingChange = GetRatingMod(stats.Rating, opponentMMR, won);
-    int32 mmrChange = GetMMRMod(stats.MMR, opponentMMR, won);
+    int32 ratingChange = PvPRating::RatingMod(_elo, stats.Rating, opponentMMR, won);
+    int32 mmrChange = PvPRating::MatchmakerMod(_elo, stats.MMR, opponentMMR, won);
 
     int32 newRating = static_cast<int32>(stats.Rating) + ratingChange;
     int32 newMMR = static_cast<int32>(stats.MMR) + mmrChange;
@@ -844,9 +796,9 @@ void RBGMgr::CheckWeekReset()
     LOG_INFO("module.rbg", "Rated BG weekly stats reset.");
 }
 
-std::vector<RBGLeaderboardRow> RBGMgr::GetLeaderboard(uint32 limit)
+std::vector<PvPLeaderboardRow> RBGMgr::GetLeaderboard(uint32 limit)
 {
-    std::vector<RBGLeaderboardRow> rows;
+    std::vector<PvPLeaderboardRow> rows;
     QueryResult result = CharacterDatabase.Query(
         "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM rbg_stats s "
         "INNER JOIN characters c ON c.guid = s.guid ORDER BY s.rating DESC, s.wins DESC LIMIT {}",
@@ -857,7 +809,7 @@ std::vector<RBGLeaderboardRow> RBGMgr::GetLeaderboard(uint32 limit)
     do
     {
         Field* fields = result->Fetch();
-        RBGLeaderboardRow row;
+        PvPLeaderboardRow row;
         row.Name = fields[0].Get<std::string>();
         row.Rating = fields[1].Get<uint32>();
         row.Wins = fields[2].Get<uint32>();
