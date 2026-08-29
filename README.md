@@ -39,8 +39,8 @@ Commands and the NPC work **without** Lua/AIO.
 
 ### AIO UI (optional)
 
-1. Install AIO: `AIO_Server` → `lua_scripts/`, `AIO_Client` → `Interface/AddOns/` on every client.
-2. Copy `lua_scripts/RBG_Server.lua` and `lua_scripts/RBG_Client.lua` into the server `lua_scripts/` folder (same place as `AIO.lua`).
+1. Install AIO: `AIO_Server` → `lua_scripts/` (next to `AIO.lua`), `AIO_Client` → `Interface/AddOns/` on every client.
+2. The RBG scripts already live in the repo `lua_scripts/` folder (`RBG_Server.lua`, `RBG_Client.lua`). If your worldserver uses another path, copy those two files next to `AIO.lua`.
 3. Restart worldserver (or `.reload eluna` if you use that).
 4. In-game: `/rbg` or the minimap badge.
 
