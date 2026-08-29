@@ -15,8 +15,10 @@ local Handlers = AIO.AddHandlers("RBG", {})
 local ACTION_QUEUE = 1
 local ACTION_LEAVE = 2
 
+-- Must match ArenaSoloBracket in the C++ module.
 local BRACKET_1V1 = 0
 local BRACKET_3V3 = 1
+local BRACKET_2V2 = 2
 
 local function GuidLow(player)
     return player:GetGUIDLow()
@@ -66,6 +68,7 @@ local function SendState(player, queuedTab)
     AIO.Handle(player, "RBG", "ShowUI", {
         rbg = LoadRbgStats(player),
         solo1v1 = LoadSoloStats(player, BRACKET_1V1),
+        solo2v2 = LoadSoloStats(player, BRACKET_2V2),
         solo3v3 = LoadSoloStats(player, BRACKET_3V3),
         queued = queuedTab or 0
     })
@@ -99,13 +102,22 @@ function Handlers.LeaveRbg(player)
 end
 
 function Handlers.QueueSolo(player, bracket)
-    if bracket ~= BRACKET_1V1 and bracket ~= BRACKET_3V3 then
-        return
-    end
+    local group = player:GetGroup()
 
-    if player:GetGroup() then
-        player:SendBroadcastMessage("|cffff0000Solo queue:|r leave your group first.")
-        SendState(player, 0)
+    if bracket == BRACKET_2V2 then
+        -- MoP-style 2v2: a party of two, no arena team.
+        if not group or group:GetLeaderGUID() ~= player:GetGUID() then
+            player:SendBroadcastMessage("|cffff0000Arena 2v2:|r only the party leader can queue.")
+            SendState(player, 0)
+            return
+        end
+    elseif bracket == BRACKET_1V1 or bracket == BRACKET_3V3 then
+        if group then
+            player:SendBroadcastMessage("|cffff0000Solo queue:|r leave your group first.")
+            SendState(player, 0)
+            return
+        end
+    else
         return
     end
 
@@ -113,8 +125,16 @@ function Handlers.QueueSolo(player, bracket)
         "REPLACE INTO arena_solo_request (guid, bracket, action, created_at) "
             .. "VALUES (%d, %d, %d, UNIX_TIMESTAMP())",
         GuidLow(player), bracket, ACTION_QUEUE))
-    player:SendBroadcastMessage("|cff00ff00Solo queue:|r searching for a match...")
-    SendState(player, bracket == BRACKET_1V1 and 2 or 3)
+    player:SendBroadcastMessage("|cff00ff00Arena:|r searching for a match...")
+
+    local tab = 2
+    if bracket == BRACKET_2V2 then
+        tab = 3
+    elseif bracket == BRACKET_3V3 then
+        tab = 4
+    end
+
+    SendState(player, tab)
 end
 
 function Handlers.LeaveSolo(player)
@@ -125,6 +145,12 @@ function Handlers.LeaveSolo(player)
     player:SendBroadcastMessage("|cffff0000Solo queue:|r leave request sent.")
     SendState(player, 0)
 end
+
+local boardBracketByTab = {
+    [2] = BRACKET_1V1,
+    [3] = BRACKET_2V2,
+    [4] = BRACKET_3V3
+}
 
 function Handlers.RequestBoard(player, tab)
     local rows = {}
@@ -137,7 +163,7 @@ function Handlers.RequestBoard(player, tab)
         query = string.format(
             "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM arena_solo_stats s "
                 .. "INNER JOIN characters c ON c.guid = s.guid WHERE s.bracket = %d "
-                .. "ORDER BY s.rating DESC, s.wins DESC LIMIT 15", tab == 2 and BRACKET_1V1 or BRACKET_3V3)
+                .. "ORDER BY s.rating DESC, s.wins DESC LIMIT 15", boardBracketByTab[tab] or BRACKET_1V1)
     end
 
     local q = CharDBQuery(query)

@@ -13,9 +13,10 @@ end
 local L = {
     TITLE = "Rated PvP",
     SUB = "Wrath of the Lich King",
-    TAB_RBG = "RBG 10v10",
+    TAB_RBG = "RBG",
     TAB_1V1 = "1v1",
-    TAB_3V3 = "3v3 SoloQ",
+    TAB_2V2 = "2v2",
+    TAB_3V3 = "3v3",
     TAB_BOARD = "Ranking",
     QUEUE = "Queue",
     LEAVE = "Leave Queue",
@@ -28,14 +29,17 @@ local L = {
     EMPTY = "No games recorded yet.",
     HINT_RBG = "Raid leader only. Exactly 10 players.",
     HINT_1V1 = "Solo only. Leave your group to queue.",
+    HINT_2V2 = "Party of 2, leader queues. Personal rating, no arena team.",
     HINT_3V3 = "Solo only. Teams are built as 1 healer + 2 damage.",
     SLASH = "/rbg to toggle this window."
 }
 
 if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.TITLE = "PvP Puntuado"
-    L.TAB_RBG = "CB 10c10"
-    L.TAB_3V3 = "3c3 SoloQ"
+    L.TAB_RBG = "CB"
+    L.TAB_1V1 = "1c1"
+    L.TAB_2V2 = "2c2"
+    L.TAB_3V3 = "3c3"
     L.TAB_BOARD = "Clasificacion"
     L.QUEUE = "Encolar"
     L.LEAVE = "Salir de cola"
@@ -47,13 +51,18 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.EMPTY = "Todavia no hay partidas."
     L.HINT_RBG = "Solo el lider de banda. Exactamente 10 jugadores."
     L.HINT_1V1 = "Solo en solitario. Sal del grupo para encolar."
+    L.HINT_2V2 = "Grupo de 2, encola el lider. Indice personal, sin equipo de arena."
     L.HINT_3V3 = "Solo en solitario. Equipos de 1 sanador + 2 de dano."
     L.SLASH = "/rbg para abrir esta ventana."
 end
 
 local Handlers = AIO.AddHandlers("RBG", {})
 
-local TAB_RBG, TAB_1V1, TAB_3V3, TAB_BOARD = 1, 2, 3, 4
+local TAB_RBG, TAB_1V1, TAB_2V2, TAB_3V3, TAB_BOARD = 1, 2, 3, 4, 5
+local TAB_COUNT = 5
+
+-- Bracket ids used by the C++ module, indexed by tab.
+local BRACKET_BY_TAB = { [TAB_1V1] = 0, [TAB_2V2] = 2, [TAB_3V3] = 1 }
 
 local emptyStats = { rating = 1500, mmr = 1500, games = 0, wins = 0,
     weekGames = 0, weekWins = 0, weekPoints = 0, highest = 1500 }
@@ -65,6 +74,7 @@ local state = {
     board = {},
     rbg = emptyStats,
     solo1v1 = emptyStats,
+    solo2v2 = emptyStats,
     solo3v3 = emptyStats
 }
 
@@ -82,7 +92,7 @@ local function RatingColor(rating)
 end
 
 local frame = CreateFrame("Frame", "ACRBGFrame", UIParent)
-frame:SetSize(440, 430)
+frame:SetSize(440, 440)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
 frame:SetToplevel(true)
@@ -115,15 +125,15 @@ local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
 close:SetPoint("TOPRIGHT", -4, -4)
 
 local tabs = {}
-local tabLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_3V3, L.TAB_BOARD }
-for i = 1, 4 do
+local tabLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3, L.TAB_BOARD }
+for i = 1, TAB_COUNT do
     local tab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    tab:SetSize(96, 22)
+    tab:SetSize(78, 22)
     tab:SetText(tabLabels[i])
     if i == 1 then
-        tab:SetPoint("TOPLEFT", 20, -44)
+        tab:SetPoint("TOPLEFT", 18, -44)
     else
-        tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 4, 0)
+        tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 3, 0)
     end
     tabs[i] = tab
 end
@@ -157,10 +167,10 @@ boardPane:SetPoint("BOTTOMRIGHT", -24, 64)
 boardPane:Hide()
 
 local boardTabs = {}
-local boardLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_3V3 }
-for i = 1, 3 do
+local boardLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3 }
+for i = 1, 4 do
     local tab = CreateFrame("Button", nil, boardPane, "UIPanelButtonTemplate")
-    tab:SetSize(120, 20)
+    tab:SetSize(90, 20)
     tab:SetText(boardLabels[i])
     if i == 1 then
         tab:SetPoint("TOPLEFT", 4, 0)
@@ -190,10 +200,13 @@ local slashFS = frame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 slashFS:SetPoint("BOTTOM", 0, 12)
 slashFS:SetText(L.SLASH)
 
--- queued: 0 none, 1 RBG, 2 solo 1v1, 3 solo 3v3
+-- state.queued mirrors the tab index of the queue you are waiting in, 0 if none.
 local function StatsForTab(tab)
     if tab == TAB_1V1 then
         return state.solo1v1
+    end
+    if tab == TAB_2V2 then
+        return state.solo2v2
     end
     if tab == TAB_3V3 then
         return state.solo3v3
@@ -202,13 +215,11 @@ local function StatsForTab(tab)
 end
 
 local function QueuedTabMatches(tab)
-    return (tab == TAB_RBG and state.queued == 1)
-        or (tab == TAB_1V1 and state.queued == 2)
-        or (tab == TAB_3V3 and state.queued == 3)
+    return state.queued ~= 0 and state.queued == tab
 end
 
 local function Refresh()
-    for i = 1, 4 do
+    for i = 1, TAB_COUNT do
         if i == state.tab then
             tabs[i]:Disable()
         else
@@ -221,7 +232,7 @@ local function Refresh()
         boardPane:Show()
         actionBtn:Hide()
 
-        for i = 1, 3 do
+        for i = 1, 4 do
             if i == state.boardTab then
                 boardTabs[i]:Disable()
             else
@@ -269,6 +280,8 @@ local function Refresh()
         hintFS:SetText(L.HINT_RBG)
     elseif state.tab == TAB_1V1 then
         hintFS:SetText(L.HINT_1V1)
+    elseif state.tab == TAB_2V2 then
+        hintFS:SetText(L.HINT_2V2)
     else
         hintFS:SetText(L.HINT_3V3)
     end
@@ -287,7 +300,7 @@ local function Refresh()
     end
 end
 
-for i = 1, 4 do
+for i = 1, TAB_COUNT do
     tabs[i]:SetScript("OnClick", function()
         state.tab = i
         if i == TAB_BOARD then
@@ -309,10 +322,8 @@ actionBtn:SetScript("OnClick", function()
 
     if state.tab == TAB_RBG then
         AIO.Handle("RBG", "QueueRbg")
-    elseif state.tab == TAB_1V1 then
-        AIO.Handle("RBG", "QueueSolo", 0)
     else
-        AIO.Handle("RBG", "QueueSolo", 1)
+        AIO.Handle("RBG", "QueueSolo", BRACKET_BY_TAB[state.tab])
     end
 end)
 
@@ -320,6 +331,7 @@ function Handlers.ShowUI(_, data)
     if data then
         state.rbg = data.rbg or emptyStats
         state.solo1v1 = data.solo1v1 or emptyStats
+        state.solo2v2 = data.solo2v2 or emptyStats
         state.solo3v3 = data.solo3v3 or emptyStats
         state.queued = data.queued or 0
     end

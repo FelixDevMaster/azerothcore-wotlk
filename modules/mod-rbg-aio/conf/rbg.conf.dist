@@ -97,16 +97,20 @@ RatedBG.LoseRatingModifier = 24
 RatedBG.MatchmakerRatingModifier = 24
 
 ###################################################################################################
-# SOLO QUEUE ARENAS (1v1 and 3v3)
+# PERSONAL-RATING ARENAS (1v1, 2v2, 3v3)
+#
+# Rating is always personal, never per arena team, exactly like Mists of Pandaria.
+# 1v1 and 3v3 are solo entry; 2v2 is entered as a party of two.
 #
 #    ArenaSolo.Enable
-#        Description: Master switch for both solo queues.
+#        Description: Master switch for all three queues.
 #        Default:     1
 #
 #    ArenaSolo.CrossFaction
-#        Description: Allow mixing factions inside a team. Solo queue barely fills
-#                     without this, and the core already handles cross-faction
-#                     arena groups. Set to 0 for Alliance vs Horde only.
+#        Description: Allow mixing factions inside a team, and Alliance-vs-Alliance
+#                     or Horde-vs-Horde matches. Solo queue barely fills without
+#                     this, and the core already handles cross-faction arena
+#                     groups. Set to 0 for Alliance vs Horde only.
 #        Default:     1
 #
 #    ArenaSolo.QueueUpdateInterval
@@ -114,7 +118,7 @@ RatedBG.MatchmakerRatingModifier = 24
 #        Default:     1000
 #
 #    ArenaSolo.NPCEntry
-#        Description: creature_template.entry of the solo queue NPC (must match SQL).
+#        Description: creature_template.entry of the arena queue NPC (must match SQL).
 #        Default:     190011
 #
 #    ArenaSolo.AnnounceQueue
@@ -126,7 +130,7 @@ RatedBG.MatchmakerRatingModifier = 24
 #                     Turning this off matches any six players.
 #        Default:     1
 #
-#    Per-bracket options, with <B> being 1v1 or 3v3:
+#    Per-bracket options, with <B> being 1v1, 2v2 or 3v3:
 #        ArenaSolo.<B>.Enable                    (default 1)
 #        ArenaSolo.<B>.MinLevel                  (default 80)
 #        ArenaSolo.<B>.StartRating / StartMMR     (default 1500 / 1500)
@@ -162,6 +166,21 @@ ArenaSolo.1v1.WinRatingModifier1 = 48
 ArenaSolo.1v1.WinRatingModifier2 = 24
 ArenaSolo.1v1.LoseRatingModifier = 24
 ArenaSolo.1v1.MatchmakerRatingModifier = 24
+
+ArenaSolo.2v2.Enable = 1
+ArenaSolo.2v2.MinLevel = 80
+ArenaSolo.2v2.StartRating = 1500
+ArenaSolo.2v2.StartMMR = 1500
+ArenaSolo.2v2.MaxRatingDiff = 150
+ArenaSolo.2v2.RatingDiscardTimer = 300000
+ArenaSolo.2v2.HonorWin = 189
+ArenaSolo.2v2.HonorLoss = 94
+ArenaSolo.2v2.ArenaPointsWin = 30
+ArenaSolo.2v2.WeeklyCap = 1200
+ArenaSolo.2v2.WinRatingModifier1 = 48
+ArenaSolo.2v2.WinRatingModifier2 = 24
+ArenaSolo.2v2.LoseRatingModifier = 24
+ArenaSolo.2v2.MatchmakerRatingModifier = 24
 
 ArenaSolo.3v3.Enable = 1
 ArenaSolo.3v3.MinLevel = 80
