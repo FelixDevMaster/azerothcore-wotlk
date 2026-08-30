@@ -49,20 +49,16 @@ void BuildChallengeGossip(Player* player)
     ObjectGuid const guid = player->GetGUID();
 
     std::string active;
-    for (uint8 mode = 0; mode <= CHALLENGE_IRON_MAN; ++mode)
+    Optional<uint8> activeMode = sChallengeModes->GetActiveChallenge(guid);
+    if (activeMode)
     {
-        if (!sChallengeModes->IsEnabled(guid, mode))
-            continue;
-
-        if (!active.empty())
-            active += ", ";
-        active += ChallengeModes::GetModeName(mode, spanish);
-    }
-
-    if (!active.empty())
-    {
+        active = ChallengeModes::GetModeName(*activeMode, spanish);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
             Acore::StringFormat(spanish ? "Modo activo: {}" : "Active mode: {}", active),
+            GOSSIP_SENDER_MAIN, GOSSIP_CHALLENGE_HELLO);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            Acore::StringFormat(spanish ? "Titulo: {}" : "Title: {}",
+                ChallengeModes::GetModeTitle(*activeMode, spanish)),
             GOSSIP_SENDER_MAIN, GOSSIP_CHALLENGE_HELLO);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
             spanish ? "Solo se permite un modo por personaje."
@@ -92,15 +88,18 @@ void BuildChallengeGossip(Player* player)
             continue;
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-            Acore::StringFormat(spanish ? "Info: {}" : "Info: {}",
-                ChallengeModes::GetModeName(mode, spanish)),
+            Acore::StringFormat(spanish ? "Info: {} — {}" : "Info: {} — {}",
+                ChallengeModes::GetModeName(mode, spanish),
+                ChallengeModes::GetModeTitle(mode, spanish)),
             GOSSIP_SENDER_MAIN, uint32(GOSSIP_CHALLENGE_INFO_BASE) + mode);
 
         if (!canActivate || sChallengeModes->HasActiveChallenge(guid))
             continue;
 
         std::string const label = Acore::StringFormat(
-            spanish ? "Activar {}" : "Enable {}", ChallengeModes::GetModeName(mode, spanish));
+            spanish ? "Activar {} ({})" : "Enable {} ({})",
+            ChallengeModes::GetModeName(mode, spanish),
+            ChallengeModes::GetModeTitle(mode, spanish));
         uint32 const action = uint32(GOSSIP_CHALLENGE_ENABLE_BASE) + mode;
 
         if (mode == CHALLENGE_HARDCORE || mode == CHALLENGE_IRON_MAN)
@@ -121,12 +120,14 @@ bool HandleChallengeGossipSelect(Player* player, uint32 action)
     {
         uint8 mode = static_cast<uint8>(action - GOSSIP_CHALLENGE_INFO_BASE);
         ChatHandler handler(player->GetSession());
-        handler.PSendSysMessage("|cff00ccff===== {} =====|r",
-            ChallengeModes::GetModeName(mode, spanish));
+        handler.PSendSysMessage("|cff00ccff===== {} — {} =====|r",
+            ChallengeModes::GetModeName(mode, spanish),
+            ChallengeModes::GetModeTitle(mode, spanish));
         handler.SendSysMessage(ChallengeModes::GetModeDescription(mode, spanish));
-        handler.SendSysMessage(spanish
-            ? "Solo un modo por personaje. El reto se completa al nivel 80 (recompensas en el .conf)."
-            : "One mode per character. The run completes at level 80 (rewards in the .conf).");
+        handler.PSendSysMessage(spanish
+            ? "Titulo al aceptarlo: |cffffd100{}|r. Solo un modo por personaje. Completas el reto al nivel 80."
+            : "Title when accepted: |cffffd100{}|r. One mode per character. The run completes at level 80.",
+            ChallengeModes::GetModeTitle(mode, spanish));
         return true;
     }
 
@@ -237,6 +238,9 @@ public:
             return;
 
         sChallengeModes->LoadPlayer(player);
+
+        if (Optional<uint8> mode = sChallengeModes->GetActiveChallenge(player->GetGUID()))
+            sChallengeModes->GrantModeTitle(player, *mode, false);
 
         if (sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE_DEAD))
         {
@@ -556,8 +560,9 @@ public:
             if (!sChallengeModes->IsEnabled(player->GetGUID(), mode))
                 continue;
 
-            handler->PSendSysMessage("- {} — {}", ChallengeModes::GetModeName(mode, spanish),
-                ChallengeModes::GetModeDescription(mode, spanish));
+            handler->PSendSysMessage("- {} [{}]", ChallengeModes::GetModeName(mode, spanish),
+                ChallengeModes::GetModeTitle(mode, spanish));
+            handler->SendSysMessage(ChallengeModes::GetModeDescription(mode, spanish));
             any = true;
         }
 

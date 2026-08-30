@@ -11,6 +11,7 @@
 #include "Chat.h"
 #include "Config.h"
 #include "DatabaseEnv.h"
+#include "DBCEnums.h"
 #include "DBCStores.h"
 #include "Log.h"
 #include "Player.h"
@@ -48,6 +49,31 @@ char const* ChallengeModes::GetModeName(uint8 mode, bool spanish)
             return spanish ? "Iron Man" : "Iron Man";
         default:
             return spanish ? "Desconocido" : "Unknown";
+    }
+}
+
+char const* ChallengeModes::GetModeTitle(uint8 mode, bool spanish)
+{
+    switch (mode)
+    {
+        case CHALLENGE_HARDCORE:
+            return spanish ? "el Imperecedero" : "the Undying";
+        case CHALLENGE_SEMI_HARDCORE:
+            return spanish ? "de la Caida Nocturna" : "of the Nightfall";
+        case CHALLENGE_SELF_CRAFTED:
+            return spanish ? "el Supremo" : "the Supreme";
+        case CHALLENGE_ITEM_QUALITY:
+            return "Jenkins";
+        case CHALLENGE_SLOW_XP:
+            return spanish ? "el Paciente" : "the Patient";
+        case CHALLENGE_VERY_SLOW_XP:
+            return spanish ? "el Explorador" : "the Explorer";
+        case CHALLENGE_QUEST_XP_ONLY:
+            return spanish ? "Maestro Cultural" : "Loremaster";
+        case CHALLENGE_IRON_MAN:
+            return spanish ? "el Demente" : "the Insane";
+        default:
+            return "";
     }
 }
 
@@ -129,6 +155,57 @@ char const* ChallengeModes::GetModeDescription(uint8 mode, bool spanish)
     }
 }
 
+std::string ChallengeModes::GetFormattedTitle(Player const* player, uint8 mode) const
+{
+    if (!player)
+        return GetModeTitle(mode, false);
+
+    uint32 const titleId = GetModeConfig(mode).RewardTitle;
+    if (CharTitlesEntry const* title = titleId ? sCharTitlesStore.LookupEntry(titleId) : nullptr)
+    {
+        LocaleConstant const loc = player->GetSession()
+            ? player->GetSession()->GetSessionDbcLocale()
+            : LOCALE_enUS;
+        char const* pattern = player->getGender() == GENDER_MALE
+            ? title->nameMale[loc]
+            : title->nameFemale[loc];
+        if (!pattern || !pattern[0])
+            pattern = title->nameMale[LOCALE_enUS];
+
+        if (pattern && pattern[0])
+        {
+            std::string formatted(pattern);
+            if (size_t const pos = formatted.find("%s"); pos != std::string::npos)
+                formatted.replace(pos, 2, player->GetName());
+            return formatted;
+        }
+    }
+
+    return Acore::StringFormat("{} {}", player->GetName(), GetModeTitle(mode, IsSpanish(player)));
+}
+
+void ChallengeModes::GrantModeTitle(Player* player, uint8 mode, bool makeCurrent) const
+{
+    if (!player || mode > CHALLENGE_IRON_MAN)
+        return;
+
+    uint32 const titleId = _modes[mode].RewardTitle;
+    if (!titleId)
+        return;
+
+    CharTitlesEntry const* title = sCharTitlesStore.LookupEntry(titleId);
+    if (!title)
+    {
+        LOG_ERROR("module.challengemodes", "Invalid RewardTitle {} for {}",
+            titleId, GetModeName(mode, false));
+        return;
+    }
+
+    player->SetTitle(title);
+    if (makeCurrent)
+        player->SetCurrentTitle(title);
+}
+
 bool ChallengeModes::IsSpanish(Player const* player)
 {
     if (!player || !player->GetSession())
@@ -161,7 +238,7 @@ void ChallengeModes::LoadConfig(bool /*reload*/)
     _announce = sConfigMgr->GetOption<bool>("ChallengeModes.Announce", true);
     _npcEntry = sConfigMgr->GetOption<uint32>("ChallengeModes.NPCEntry", NPC_CHALLENGE_KEEPER);
 
-    auto loadMode = [this](uint8 mode, char const* prefix, float defaultXp)
+    auto loadMode = [this](uint8 mode, char const* prefix, float defaultXp, uint32 defaultTitle)
     {
         auto option = [prefix](char const* name)
         {
@@ -176,7 +253,7 @@ void ChallengeModes::LoadConfig(bool /*reload*/)
         config.RewardLevel = sConfigMgr->GetOption<uint32>(option("RewardLevel"), 80);
         config.RewardItem = sConfigMgr->GetOption<uint32>(option("RewardItem"), 0);
         config.RewardItemCount = sConfigMgr->GetOption<uint32>(option("RewardItemCount"), 1);
-        config.RewardTitle = sConfigMgr->GetOption<uint32>(option("RewardTitle"), 0);
+        config.RewardTitle = sConfigMgr->GetOption<uint32>(option("RewardTitle"), defaultTitle);
         config.RewardGold = sConfigMgr->GetOption<uint32>(option("RewardGold"), 0);
         config.RewardHonor = sConfigMgr->GetOption<uint32>(option("RewardHonor"), 0);
         config.RewardAchievement = sConfigMgr->GetOption<uint32>(option("RewardAchievement"), 0);
@@ -187,14 +264,15 @@ void ChallengeModes::LoadConfig(bool /*reload*/)
         LoadRewardMap(config.AchievementRewards, sConfigMgr->GetOption<std::string>(option("AchievementReward"), ""));
     };
 
-    loadMode(CHALLENGE_HARDCORE, "Hardcore", 1.f);
-    loadMode(CHALLENGE_SEMI_HARDCORE, "SemiHardcore", 1.f);
-    loadMode(CHALLENGE_SELF_CRAFTED, "SelfCrafted", 1.f);
-    loadMode(CHALLENGE_ITEM_QUALITY, "ItemQualityLevel", 1.f);
-    loadMode(CHALLENGE_SLOW_XP, "SlowXpGain", 0.5f);
-    loadMode(CHALLENGE_VERY_SLOW_XP, "VerySlowXpGain", 0.25f);
-    loadMode(CHALLENGE_QUEST_XP_ONLY, "QuestXpOnly", 1.f);
-    loadMode(CHALLENGE_IRON_MAN, "IronMan", 1.f);
+    // Default titles are stock 3.3.5 CharTitles.dbc ids (visible without a client patch).
+    loadMode(CHALLENGE_HARDCORE, "Hardcore", 1.f, 142);            // the Undying
+    loadMode(CHALLENGE_SEMI_HARDCORE, "SemiHardcore", 1.f, 140);   // of the Nightfall
+    loadMode(CHALLENGE_SELF_CRAFTED, "SelfCrafted", 1.f, 85);      // the Supreme
+    loadMode(CHALLENGE_ITEM_QUALITY, "ItemQualityLevel", 1.f, 143); // Jenkins
+    loadMode(CHALLENGE_SLOW_XP, "SlowXpGain", 0.5f, 172);          // the Patient
+    loadMode(CHALLENGE_VERY_SLOW_XP, "VerySlowXpGain", 0.25f, 78); // the Explorer
+    loadMode(CHALLENGE_QUEST_XP_ONLY, "QuestXpOnly", 1.f, 125);    // Loremaster
+    loadMode(CHALLENGE_IRON_MAN, "IronMan", 1.f, 145);             // the Insane
 
     LOG_INFO("module.challengemodes", "Challenge Modes: {} (npc {})", _enabled ? "enabled" : "disabled", _npcEntry);
 }
@@ -378,6 +456,7 @@ bool ChallengeModes::EnableChallenge(Player* player, uint8 mode, std::string& er
     }
 
     SetEnabled(player, mode, true);
+    GrantModeTitle(player, mode, true);
     BroadcastStart(player, mode);
     return true;
 }
@@ -445,7 +524,10 @@ void ChallengeModes::GiveConfiguredReward(Player* player, uint8 mode, uint8 /*le
     if (config.RewardTitle)
     {
         if (CharTitlesEntry const* title = sCharTitlesStore.LookupEntry(config.RewardTitle))
+        {
             player->SetTitle(title);
+            player->SetCurrentTitle(title);
+        }
         else
             LOG_ERROR("module.challengemodes", "Invalid RewardTitle {} for {}",
                 config.RewardTitle, GetModeName(mode, false));
@@ -516,11 +598,11 @@ void ChallengeModes::BroadcastStart(Player* player, uint8 mode) const
     if (!player)
         return;
 
+    std::string const titled = GetFormattedTitle(player, mode);
     Broadcast(Acore::StringFormat(
         "|cff00ccff[Challenge]|r |cffffd100{}|r ha aceptado el modo |cffff2020{}|r. "
         "|cff00ccff[Challenge]|r |cffffd100{}|r has accepted |cffff2020{}|r.",
-        player->GetName(), GetModeName(mode, true),
-        player->GetName(), GetModeName(mode, false)));
+        titled, GetModeName(mode, true), titled, GetModeName(mode, false)));
 }
 
 void ChallengeModes::BroadcastDeath(Player* player, uint8 mode, char const* killer) const
@@ -532,16 +614,17 @@ void ChallengeModes::BroadcastDeath(Player* player, uint8 mode, char const* kill
         ? Acore::StringFormat(" ({})", killer)
         : "";
 
+    std::string const titled = GetFormattedTitle(player, mode);
     if (mode == CHALLENGE_HARDCORE)
         Broadcast(Acore::StringFormat(
             "|cffff2020[Hardcore]|r |cffffd100{}|r ha caido{} y queda perdido para siempre. "
             "|cffff2020[Hardcore]|r |cffffd100{}|r has fallen{} and is lost forever.",
-            player->GetName(), by, player->GetName(), by));
+            titled, by, titled, by));
     else
         Broadcast(Acore::StringFormat(
             "|cffff2020[Iron Man]|r |cffffd100{}|r ha muerto{} y no puede resucitar. "
             "|cffff2020[Iron Man]|r |cffffd100{}|r has died{} and cannot resurrect.",
-            player->GetName(), by, player->GetName(), by));
+            titled, by, titled, by));
 }
 
 void ChallengeModes::BroadcastComplete(Player* player, uint8 mode) const
@@ -549,9 +632,10 @@ void ChallengeModes::BroadcastComplete(Player* player, uint8 mode) const
     if (!player)
         return;
 
+    std::string const titled = GetFormattedTitle(player, mode);
     Broadcast(Acore::StringFormat(
         "|cff00ff00[Challenge]|r |cffffd100{}|r ha completado |cff00ff00{}|r al nivel {}. "
         "|cff00ff00[Challenge]|r |cffffd100{}|r has completed |cff00ff00{}|r at level {}.",
-        player->GetName(), GetModeName(mode, true), player->GetLevel(),
-        player->GetName(), GetModeName(mode, false), player->GetLevel()));
+        titled, GetModeName(mode, true), player->GetLevel(),
+        titled, GetModeName(mode, false), player->GetLevel()));
 }

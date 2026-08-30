@@ -15,18 +15,18 @@ Challenge modes for AzerothCore 3.3.5a. Activate per-character at the **Keeper o
 - The realm **announces** when a player accepts a mode, when a Hardcore / Iron Man character dies, and when someone completes a run at `RewardLevel` (default 80). Toggle with `ChallengeModes.Announce`.
 - Progress is stored in `character_challenge_modes` (created on boot). `EnablePlayerSettings` is **not** required.
 
-| Mode | Rule |
-| --- | --- |
-| Hardcore | One life. Death (mob, player or spirit release) leaves you a ghost forever. The realm announces your fall. |
-| Semi-Hardcore | You may die, but each death destroys worn equipment and all carried gold. |
-| Self-Crafted | Only items you crafted yourself (item creator must be this character). |
-| Item Quality | Poor / Common gear only. |
-| Slow XP | 0.5× experience from kills, quests and exploration. |
-| Very Slow XP | 0.25× experience. |
-| Quest XP Only | Experience from quests only. |
-| Iron Man | No resurrect, talent points, rare gear, potions/flasks, enchants or groups. Death is announced. |
+| Mode | Title (id) | Rule |
+| --- | --- | --- |
+| Hardcore | the Undying (142) | One life. Death (mob, player or spirit release) leaves you a ghost forever. The realm announces your fall. |
+| Semi-Hardcore | of the Nightfall (140) | You may die, but each death destroys worn equipment and all carried gold. |
+| Self-Crafted | the Supreme (85) | Only items you crafted yourself (item creator must be this character). |
+| Item Quality | Jenkins (143) | Poor / Common gear only. |
+| Slow XP | the Patient (172) | 0.5× experience from kills, quests and exploration. |
+| Very Slow XP | the Explorer (78) | 0.25× experience. |
+| Quest XP Only | Loremaster (125) | Experience from quests only. |
+| Iron Man | the Insane (145) | No resurrect, talent points, rare gear, potions/flasks, enchants or groups. Death is announced. |
 
-Gossip **Info** for each mode prints a longer bilingual explanation (rules, how to finish at 80, one-mode limit).
+Accepting a mode **grants and equips** that title (stock 3.3.5 `CharTitles.dbc` ids, so the nameplate shows it without a client patch). Change or disable with `<Mode>.RewardTitle` (`0` = no title). Gossip **Info** prints the title plus a longer bilingual explanation.
 
 ## Level 80 rewards
 
@@ -35,7 +35,7 @@ Configure completion rewards per mode in `challenge_modes.conf`. When the charac
 | Key | What it grants |
 | --- | --- |
 | `RewardItem` / `RewardItemCount` | Item mailed to the player |
-| `RewardTitle` | `CharTitles.dbc` id |
+| `RewardTitle` | `CharTitles.dbc` id (also granted and worn when the mode is accepted) |
 | `RewardGold` | Copper (10000 = 1 gold) |
 | `RewardHonor` | Honor points |
 | `RewardAchievement` | Achievement id |

@@ -91,10 +91,13 @@ public:
 
     void GiveLevelRewards(Player* player, uint8 oldLevel);
     void HandlePlayerDeath(Player* player, char const* killer = nullptr);
+    void GrantModeTitle(Player* player, uint8 mode, bool makeCurrent) const;
 
     static char const* GetModeName(uint8 mode, bool spanish);
+    static char const* GetModeTitle(uint8 mode, bool spanish);
     static char const* GetModeDescription(uint8 mode, bool spanish);
     static bool IsSpanish(Player const* player);
+    [[nodiscard]] std::string GetFormattedTitle(Player const* player, uint8 mode) const;
     void Broadcast(std::string const& message) const;
 
 private:
