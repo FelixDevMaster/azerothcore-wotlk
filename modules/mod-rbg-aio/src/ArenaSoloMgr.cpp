@@ -67,6 +67,8 @@ char const* ArenaSoloMgr::GetBracketName(uint8 bracket)
             return "1v1";
         case ARENA_SOLO_BRACKET_2V2:
             return "2v2";
+        case ARENA_SOLO_BRACKET_3V3_TEAM:
+            return "3v3";
         default:
             return "3v3 SoloQ";
     }
@@ -80,8 +82,11 @@ Optional<uint8> ArenaSoloMgr::ParseBracket(std::string_view token)
     if (token == "2v2" || token == "2" || token == "duo")
         return ARENA_SOLO_BRACKET_2V2;
 
-    if (token == "3v3" || token == "3" || token == "soloq" || token == "solo3")
+    if (token == "soloq" || token == "solo3" || token == "3v3solo")
         return ARENA_SOLO_BRACKET_3V3;
+
+    if (token == "3v3" || token == "3" || token == "3vs3" || token == "team3" || token == "premade3")
+        return ARENA_SOLO_BRACKET_3V3_TEAM;
 
     return {};
 }
@@ -124,13 +129,14 @@ void ArenaSoloMgr::LoadConfig(bool /*reload*/)
         config.Elo.MatchmakerModifier = sConfigMgr->GetOption<float>(option("MatchmakerRatingModifier"), 24.f);
     };
 
-    // 1v1 keeps a module-owned personal rating. 2v2 and 3v3 SoloQ each give
-    // the character a personal arena_team (2v2 slot / 5v5 slot) so rating
-    // lands on arena_team_member. 3v3 stays solo-entry and is assembled
-    // from official compositions when the queue allows it.
+    // 1v1 keeps a module-owned personal rating. Premade 2v2 / 3v3 and 3v3
+    // SoloQ each give the character a personal arena_team (slots 2v2 / 3v3 /
+    // 5v5) so rating lands on arena_team_member. SoloQ stays solo-entry and
+    // is assembled from official compositions when the queue allows it.
     loadBracket(_brackets[ARENA_SOLO_BRACKET_1V1], "1v1", 1, 1, ARENA_TYPE_2v2);
     loadBracket(_brackets[ARENA_SOLO_BRACKET_2V2], "2v2", 2, 2, ARENA_TYPE_2v2);
     loadBracket(_brackets[ARENA_SOLO_BRACKET_3V3], "3v3", 3, 1, ARENA_TYPE_3v3);
+    loadBracket(_brackets[ARENA_SOLO_BRACKET_3V3_TEAM], "3v3Team", 3, 3, ARENA_TYPE_3v3);
 
     _brackets[ARENA_SOLO_BRACKET_1V1].RequireRoleBalance = false;
     _brackets[ARENA_SOLO_BRACKET_1V1].UseCoreArenaTeam = false;
@@ -148,10 +154,16 @@ void ArenaSoloMgr::LoadConfig(bool /*reload*/)
     _brackets[ARENA_SOLO_BRACKET_3V3].ArenaTeamType = ARENA_TEAM_5v5;
     _brackets[ARENA_SOLO_BRACKET_3V3].ArenaTeamSlot = ARENA_SLOT_5v5;
 
-    LOG_INFO("module.arenasolo", "Arenas: {} (1v1 {}, 2v2 team {}, 3v3 soloq {})",
+    _brackets[ARENA_SOLO_BRACKET_3V3_TEAM].RequireRoleBalance = false;
+    _brackets[ARENA_SOLO_BRACKET_3V3_TEAM].UseCoreArenaTeam = true;
+    _brackets[ARENA_SOLO_BRACKET_3V3_TEAM].ArenaTeamType = ARENA_TEAM_3v3;
+    _brackets[ARENA_SOLO_BRACKET_3V3_TEAM].ArenaTeamSlot = ARENA_SLOT_3v3;
+
+    LOG_INFO("module.arenasolo", "Arenas: {} (1v1 {}, 2v2 {}, 3v3 team {}, 3v3 soloq {})",
         _enabled ? "enabled" : "disabled",
         _brackets[ARENA_SOLO_BRACKET_1V1].Enabled ? "on" : "off",
         _brackets[ARENA_SOLO_BRACKET_2V2].Enabled ? "on" : "off",
+        _brackets[ARENA_SOLO_BRACKET_3V3_TEAM].Enabled ? "on" : "off",
         _brackets[ARENA_SOLO_BRACKET_3V3].Enabled ? "on" : "off");
 }
 
@@ -383,10 +395,10 @@ ArenaTeam* FindPersonalArenaTeam(ObjectGuid guid, uint8 type)
 std::string MakePersonalArenaTeamName(Player* player, uint8 type)
 {
     std::string name;
-    if (type == ARENA_TEAM_5v5)
+    if (type == ARENA_TEAM_5v5 || type == ARENA_TEAM_3v3)
     {
-        // Fits in arena_team.name (varchar 24): 12-char character + " 3vs3 soloq".
-        std::string const label = " 3vs3 soloq";
+        // Fits in arena_team.name (varchar 24). 2v2 keeps the bare character name.
+        std::string const label = type == ARENA_TEAM_5v5 ? " 3vs3 soloq" : " 3vs3";
         name = player->GetName();
         if (name.size() + label.size() > PERSONAL_TEAM_NAME_MAX)
             name.resize(PERSONAL_TEAM_NAME_MAX - label.size());

@@ -97,18 +97,20 @@ RatedBG.LoseRatingModifier = 24
 RatedBG.MatchmakerRatingModifier = 24
 
 ###################################################################################################
-# ARENAS (1v1 personal, 2v2 / 3v3 personal arena teams)
+# ARENAS (1v1 personal, 2v2 / 3v3 personal arena teams, 3v3 SoloQ)
 #
 # 1v1 keeps a module-owned personal rating in arena_solo_stats.
 # 2v2 gives each character a personal 2v2 arena_team (captain = GUID).
+# Premade 3v3 (ArenaSolo.3v3Team) gives each character a personal 3v3
+# arena_team (type 3 / slot 1). Party of 3, leader queues — same pattern as 2v2.
 # 3v3 SoloQ gives each character a personal 5v5 arena_team (captain = GUID)
-# so it does not collide with the 2v2 slot. Queue is still solo; sides are
-# assembled as official 3v3 comps (RMP, Shadowplay, MLS, Jungle Cleave,
+# so it does not collide with the 2v2 or 3v3 slots. Queue is still solo; sides
+# are assembled as official 3v3 comps (RMP, Shadowplay, MLS, Jungle Cleave,
 # God Comp, Thunder Cleave, TSG, WLS, RLS, ...) and fall back to 1 healer
 # + 2 damage. Leaving or missing the arena applies the Deserter aura (26013).
 #
 #    ArenaSolo.Enable
-#        Description: Master switch for all three queues.
+#        Description: Master switch for all four arena queues.
 #        Default:     1
 #
 #    ArenaSolo.CrossFaction
@@ -140,7 +142,7 @@ RatedBG.MatchmakerRatingModifier = 24
 #                     Comp, Thunder, ...) when the queue has the right classes.
 #        Default:     1
 #
-#    Per-bracket options, with <B> being 1v1, 2v2 or 3v3:
+#    Per-bracket options, with <B> being 1v1, 2v2, 3v3 (SoloQ) or 3v3Team:
 #        ArenaSolo.<B>.Enable                    (default 1)
 #        ArenaSolo.<B>.MinLevel                  (default 80)
 #        ArenaSolo.<B>.StartRating / StartMMR     (default 1500 / 1500)
@@ -207,3 +209,18 @@ ArenaSolo.3v3.WinRatingModifier1 = 48
 ArenaSolo.3v3.WinRatingModifier2 = 24
 ArenaSolo.3v3.LoseRatingModifier = 24
 ArenaSolo.3v3.MatchmakerRatingModifier = 24
+
+ArenaSolo.3v3Team.Enable = 1
+ArenaSolo.3v3Team.MinLevel = 80
+ArenaSolo.3v3Team.StartRating = 1500
+ArenaSolo.3v3Team.StartMMR = 1500
+ArenaSolo.3v3Team.MaxRatingDiff = 150
+ArenaSolo.3v3Team.RatingDiscardTimer = 300000
+ArenaSolo.3v3Team.HonorWin = 189
+ArenaSolo.3v3Team.HonorLoss = 94
+ArenaSolo.3v3Team.ArenaPointsWin = 35
+ArenaSolo.3v3Team.WeeklyCap = 1350
+ArenaSolo.3v3Team.WinRatingModifier1 = 48
+ArenaSolo.3v3Team.WinRatingModifier2 = 24
+ArenaSolo.3v3Team.LoseRatingModifier = 24
+ArenaSolo.3v3Team.MatchmakerRatingModifier = 24

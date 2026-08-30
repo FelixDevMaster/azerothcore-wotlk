@@ -217,7 +217,7 @@ public:
     }) { }
 
     // Changing party composition invalidates the queued entry, whether it was a
-    // solo player picking up a group or a queued 2v2 duo gaining a third member.
+    // solo player picking up a group or a queued 2v2 / 3v3 party changing size.
     void OnAddMember(Group* /*group*/, ObjectGuid guid) override
     {
         sArenaSoloMgr->RemovePlayer(guid);
@@ -278,7 +278,7 @@ public:
                 ArenaSoloBracketConfig const& config = sArenaSoloMgr->GetBracketConfig(bracket);
                 std::string queueKind = "solo";
                 if (config.UseCoreArenaTeam && config.GroupSize > 1)
-                    queueKind = "party of 2, personal teams";
+                    queueKind = Acore::StringFormat("party of {}, personal teams", config.GroupSize);
                 else if (config.UseCoreArenaTeam)
                     queueKind = "solo, official 3v3 comps";
                 else if (config.GroupSize > 1)
@@ -371,13 +371,14 @@ public:
     {
         static ChatCommandTable soloTable =
         {
-            { "1v1",    HandleQueue1v1,   SEC_PLAYER, Console::No },
-            { "2v2",    HandleQueue2v2,   SEC_PLAYER, Console::No },
-            { "3v3",    HandleQueue3v3,   SEC_PLAYER, Console::No },
-            { "leave",  HandleLeave,      SEC_PLAYER, Console::No },
-            { "status", HandleStatus,     SEC_PLAYER, Console::No },
-            { "top",    HandleTop,        SEC_PLAYER, Console::No },
-            { "",       HandleStatus,     SEC_PLAYER, Console::No }
+            { "1v1",    HandleQueue1v1,       SEC_PLAYER, Console::No },
+            { "2v2",    HandleQueue2v2,       SEC_PLAYER, Console::No },
+            { "3v3",    HandleQueue3v3Team,   SEC_PLAYER, Console::No },
+            { "soloq",  HandleQueue3v3,       SEC_PLAYER, Console::No },
+            { "leave",  HandleLeave,          SEC_PLAYER, Console::No },
+            { "status", HandleStatus,         SEC_PLAYER, Console::No },
+            { "top",    HandleTop,            SEC_PLAYER, Console::No },
+            { "",       HandleStatus,         SEC_PLAYER, Console::No }
         };
 
         static ChatCommandTable commandTable =
@@ -401,6 +402,11 @@ public:
     static bool HandleQueue3v3(ChatHandler* handler)
     {
         return HandleQueueCommand(handler, ARENA_SOLO_BRACKET_3V3);
+    }
+
+    static bool HandleQueue3v3Team(ChatHandler* handler)
+    {
+        return HandleQueueCommand(handler, ARENA_SOLO_BRACKET_3V3_TEAM);
     }
 
     static bool HandleLeave(ChatHandler* handler)
@@ -436,9 +442,10 @@ public:
                 sArenaSoloMgr->GetQueuedCount(*queued) == 1 ? "y" : "ies");
         else
             handler->SendSysMessage(
-                "Not queued. Use .solo 1v1 or .solo 3v3 while ungrouped "
-                "(3v3 uses a personal 5v5 team and official comps), "
-                "or .solo 2v2 in a party of 2 (personal 2v2 team).");
+                "Not queued. Use .solo 1v1 or .solo soloq while ungrouped "
+                "(3v3 SoloQ uses a personal 5v5 team and official comps), "
+                ".solo 2v2 in a party of 2 (personal 2v2 team), "
+                "or .solo 3v3 in a party of 3 (personal 3v3 team).");
 
         return true;
     }
@@ -451,7 +458,7 @@ public:
             Optional<uint8> parsed = ArenaSoloMgr::ParseBracket(*bracketArg);
             if (!parsed)
             {
-                handler->SendSysMessage("Usage: .solo top [1v1|2v2|3v3]");
+                handler->SendSysMessage("Usage: .solo top [1v1|2v2|3v3|soloq]");
                 handler->SetSentErrorMessage(true);
                 return false;
             }

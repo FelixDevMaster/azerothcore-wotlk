@@ -40,7 +40,8 @@ enum ArenaSoloBracket : uint8
     ARENA_SOLO_BRACKET_1V1 = 0,
     ARENA_SOLO_BRACKET_3V3 = 1,
     ARENA_SOLO_BRACKET_2V2 = 2,
-    ARENA_SOLO_BRACKET_MAX = 3
+    ARENA_SOLO_BRACKET_3V3_TEAM = 3,
+    ARENA_SOLO_BRACKET_MAX = 4
 };
 
 struct ArenaSoloStats
@@ -59,7 +60,7 @@ struct ArenaSoloStats
 };
 
 // One queue entry is one entering unit: a single player in the solo brackets,
-// or a party of two in 2v2 (each player keeps a personal arena team).
+// or a premade party in 2v2 / 3v3 (each player keeps a personal arena team).
 struct ArenaSoloQueueEntry
 {
     ObjectGuid LeaderGuid;

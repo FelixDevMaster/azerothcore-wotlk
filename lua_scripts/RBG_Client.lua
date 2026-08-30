@@ -17,6 +17,7 @@ local L = {
     TAB_1V1 = "1v1",
     TAB_2V2 = "2v2",
     TAB_3V3 = "3v3",
+    TAB_SOLOQ = "SoloQ 3v3",
     TAB_BOARD = "Ranking",
     QUEUE = "Enter Queue",
     LEAVE = "Leave Queue",
@@ -33,7 +34,8 @@ local L = {
     HINT_RBG = "Form a raid of 10. Only the raid leader can queue.",
     HINT_1V1 = "Solo queue. Leave your group before you queue.",
     HINT_2V2 = "Party of 2. Each player has a personal 2v2 team. The leader queues.",
-    HINT_3V3 = "Solo queue. Personal 5v5 team. Sides are built as official 3v3 comps (RMP, MLS, Jungle, God Comp, Thunder...).",
+    HINT_3V3 = "Party of 3. Each player has a personal 3v3 team. The leader queues.",
+    HINT_SOLOQ = "Solo queue. Personal 5v5 team. Sides are built as official 3v3 comps (RMP, MLS, Jungle, God Comp, Thunder...).",
     SLASH = "/rbg  to toggle this window"
 }
 
@@ -43,6 +45,7 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.TAB_1V1 = "1c1"
     L.TAB_2V2 = "2c2"
     L.TAB_3V3 = "3c3"
+    L.TAB_SOLOQ = "SoloQ 3c3"
     L.TAB_BOARD = "Ranking"
     L.QUEUE = "Encolar"
     L.LEAVE = "Salir de cola"
@@ -59,15 +62,17 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.HINT_RBG = "Forma una banda de 10. Solo el lider puede encolar."
     L.HINT_1V1 = "Cola en solitario. Sal del grupo antes de encolar."
     L.HINT_2V2 = "Grupo de 2. Cada uno tiene su equipo 2c2 personal. Encola el lider."
-    L.HINT_3V3 = "Cola en solitario. Equipo 5c5 personal. Se arman comps oficiales (RMP, MLS, Jungle, God Comp, Thunder...)."
+    L.HINT_3V3 = "Grupo de 3. Cada uno tiene su equipo 3c3 personal. Encola el lider."
+    L.HINT_SOLOQ = "Cola en solitario. Equipo 5c5 personal. Se arman comps oficiales (RMP, MLS, Jungle, God Comp, Thunder...)."
     L.SLASH = "/rbg  para abrir esta ventana"
 end
 
 local Handlers = AIO.AddHandlers("RBG", {})
 
-local TAB_RBG, TAB_1V1, TAB_2V2, TAB_3V3, TAB_BOARD = 1, 2, 3, 4, 5
-local TAB_COUNT = 5
-local BRACKET_BY_TAB = { [TAB_1V1] = 0, [TAB_2V2] = 2, [TAB_3V3] = 1 }
+local TAB_RBG, TAB_1V1, TAB_2V2, TAB_3V3, TAB_SOLOQ, TAB_BOARD = 1, 2, 3, 4, 5, 6
+local TAB_COUNT = 6
+-- Must match ArenaSoloBracket: 1v1=0, SoloQ 3v3=1, 2v2=2, premade 3v3=3.
+local BRACKET_BY_TAB = { [TAB_1V1] = 0, [TAB_2V2] = 2, [TAB_3V3] = 3, [TAB_SOLOQ] = 1 }
 
 local emptyStats = { rating = 1500, mmr = 1500, games = 0, wins = 0,
     weekGames = 0, weekWins = 0, weekPoints = 0, highest = 1500,
@@ -81,7 +86,8 @@ local state = {
     rbg = emptyStats,
     solo1v1 = emptyStats,
     solo2v2 = emptyStats,
-    solo3v3 = emptyStats
+    solo3v3 = emptyStats,
+    solo3v3Team = emptyStats
 }
 
 local function RatingColor(rating)
@@ -115,7 +121,7 @@ local CREAM = { 1, 0.96, 0.84 }
 local MUTED = { 0.7, 0.65, 0.5 }
 
 local frame = CreateFrame("Frame", "ACRBGFrame", UIParent)
-frame:SetSize(620, 560)
+frame:SetSize(720, 560)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
 frame:SetToplevel(true)
@@ -160,15 +166,15 @@ close:SetWidth(32)
 close:SetHeight(32)
 
 local tabs = {}
-local tabLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3, L.TAB_BOARD }
+local tabLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3, L.TAB_SOLOQ, L.TAB_BOARD }
 for i = 1, TAB_COUNT do
     local tab = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    tab:SetSize(108, 26)
+    tab:SetSize(i == TAB_SOLOQ and 118 or 94, 26)
     tab:SetText(tabLabels[i])
     if i == 1 then
-        tab:SetPoint("TOPLEFT", 24, -52)
+        tab:SetPoint("TOPLEFT", 22, -52)
     else
-        tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 6, 0)
+        tab:SetPoint("LEFT", tabs[i - 1], "RIGHT", 4, 0)
     end
     tabs[i] = tab
 end
@@ -242,11 +248,12 @@ boardPane:SetBackdropColor(0.08, 0.07, 0.05, 0.85)
 boardPane:SetBackdropBorderColor(0.7, 0.55, 0.2, 0.9)
 boardPane:Hide()
 
+local BOARD_TAB_COUNT = 5
 local boardTabs = {}
-local boardLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3 }
-for i = 1, 4 do
+local boardLabels = { L.TAB_RBG, L.TAB_1V1, L.TAB_2V2, L.TAB_3V3, L.TAB_SOLOQ }
+for i = 1, BOARD_TAB_COUNT do
     local tab = CreateFrame("Button", nil, boardPane, "UIPanelButtonTemplate")
-    tab:SetSize(120, 22)
+    tab:SetSize(i == 5 and 124 or 108, 22)
     tab:SetText(boardLabels[i])
     if i == 1 then
         tab:SetPoint("TOPLEFT", 16, -14)
@@ -305,6 +312,9 @@ local function StatsForTab(tab)
         return state.solo2v2
     end
     if tab == TAB_3V3 then
+        return state.solo3v3Team
+    end
+    if tab == TAB_SOLOQ then
         return state.solo3v3
     end
     return state.rbg
@@ -315,7 +325,7 @@ local function QueuedTabMatches(tab)
 end
 
 local function UsesTeamPane(tab)
-    return tab == TAB_2V2 or tab == TAB_3V3
+    return tab == TAB_2V2 or tab == TAB_3V3 or tab == TAB_SOLOQ
 end
 
 local function Refresh()
@@ -332,7 +342,7 @@ local function Refresh()
         boardPane:Show()
         actionBtn:Hide()
 
-        for i = 1, 4 do
+        for i = 1, BOARD_TAB_COUNT do
             if i == state.boardTab then
                 boardTabs[i]:Disable()
             else
@@ -398,8 +408,10 @@ local function Refresh()
         hintFS:SetText(L.HINT_1V1)
     elseif state.tab == TAB_2V2 then
         hintFS:SetText(L.HINT_2V2)
-    else
+    elseif state.tab == TAB_3V3 then
         hintFS:SetText(L.HINT_3V3)
+    else
+        hintFS:SetText(L.HINT_SOLOQ)
     end
 
     if QueuedTabMatches(state.tab) then
@@ -448,6 +460,7 @@ function Handlers.ShowUI(_, data)
         state.solo1v1 = data.solo1v1 or emptyStats
         state.solo2v2 = data.solo2v2 or emptyStats
         state.solo3v3 = data.solo3v3 or emptyStats
+        state.solo3v3Team = data.solo3v3Team or emptyStats
         state.queued = data.queued or 0
     end
 
