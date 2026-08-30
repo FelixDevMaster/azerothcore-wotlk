@@ -30,6 +30,10 @@ local L = {
     TEAM = "Arena Team",
     WINS = "Wins",
     LOSSES = "Losses",
+    NAME = "Name",
+    PLAYED = "Played",
+    WINRATE = "Win %",
+    BOARD_RATING = "Rating",
     EMPTY = "No games recorded yet.",
     HINT_RBG = "Form a raid of 10. Only the raid leader can queue.",
     HINT_1V1 = "Solo queue. Leave your group before you queue.",
@@ -56,8 +60,12 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.WEEK = "Esta semana"
     L.POINTS = "Puntos de arena"
     L.TEAM = "Equipo de arena"
-    L.WINS = "Victorias"
-    L.LOSSES = "Derrotas"
+    L.WINS = "Ganadas"
+    L.LOSSES = "Perdidas"
+    L.NAME = "Nombre"
+    L.PLAYED = "Jugadas"
+    L.WINRATE = "Efectividad"
+    L.BOARD_RATING = "Indice"
     L.EMPTY = "Todavia no hay partidas."
     L.HINT_RBG = "Forma una banda de 10. Solo el lider puede encolar."
     L.HINT_1V1 = "Cola en solitario. Sal del grupo antes de encolar."
@@ -121,7 +129,7 @@ local CREAM = { 1, 0.96, 0.84 }
 local MUTED = { 0.7, 0.65, 0.5 }
 
 local frame = CreateFrame("Frame", "ACRBGFrame", UIParent)
-frame:SetSize(720, 560)
+frame:SetSize(760, 590)
 frame:SetPoint("CENTER")
 frame:SetFrameStrata("DIALOG")
 frame:SetToplevel(true)
@@ -267,33 +275,61 @@ for i = 1, BOARD_TAB_COUNT do
     boardTabs[i] = tab
 end
 
-local headerRank = boardPane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-headerRank:SetPoint("TOPLEFT", 22, -46)
-headerRank:SetText("#")
-headerRank:SetTextColor(unpack(GOLD))
+local BOARD_ROWS = 15
+local BOARD_ROW_H = 20
+local boardCols = {
+    { key = "rank",   label = "#",            width = 28,  justify = "LEFT" },
+    { key = "name",   label = L.NAME,         width = 148, justify = "LEFT" },
+    { key = "rating", label = L.BOARD_RATING, width = 78,  justify = "RIGHT" },
+    { key = "wins",   label = L.WINS,         width = 78,  justify = "RIGHT" },
+    { key = "losses", label = L.LOSSES,       width = 78,  justify = "RIGHT" },
+    { key = "games",  label = L.PLAYED,       width = 78,  justify = "RIGHT" },
+    { key = "winpct", label = L.WINRATE,      width = 90,  justify = "RIGHT" }
+}
 
-local headerName = boardPane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-headerName:SetPoint("TOPLEFT", 56, -46)
-headerName:SetText(L.TAB_BOARD)
-headerName:SetTextColor(unpack(GOLD))
+local boardColX = 16
+for _, col in ipairs(boardCols) do
+    local header = boardPane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    header:SetPoint("TOPLEFT", boardColX, -46)
+    header:SetWidth(col.width)
+    header:SetJustifyH(col.justify)
+    header:SetText(col.label)
+    header:SetTextColor(unpack(GOLD))
+    col.x = boardColX
+    boardColX = boardColX + col.width + 8
+end
 
-local headerRating = boardPane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-headerRating:SetPoint("TOPRIGHT", -140, -46)
-headerRating:SetText(L.RATING)
-headerRating:SetTextColor(unpack(GOLD))
+local boardHeaderLine = boardPane:CreateTexture(nil, "ARTWORK")
+boardHeaderLine:SetTexture("Interface\\FriendsFrame\\UI-FriendsFrame-OnlineDivider")
+boardHeaderLine:SetHeight(8)
+boardHeaderLine:SetPoint("TOPLEFT", 14, -62)
+boardHeaderLine:SetPoint("TOPRIGHT", -14, -62)
 
-local headerRecord = boardPane:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-headerRecord:SetPoint("TOPRIGHT", -28, -46)
-headerRecord:SetText(L.RECORD)
-headerRecord:SetTextColor(unpack(GOLD))
+local boardRows = {}
+for i = 1, BOARD_ROWS do
+    local y = -72 - ((i - 1) * BOARD_ROW_H)
+    local cells = {}
+    for _, col in ipairs(boardCols) do
+        local fs = boardPane:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        fs:SetPoint("TOPLEFT", col.x, y)
+        fs:SetWidth(col.width)
+        fs:SetJustifyH(col.justify)
+        cells[col.key] = fs
+    end
+    boardRows[i] = cells
+end
 
-local boardLines = {}
-for i = 1, 15 do
-    local line = boardPane:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    line:SetPoint("TOPLEFT", 22, -68 - ((i - 1) * 20))
-    line:SetPoint("TOPRIGHT", -22, -68 - ((i - 1) * 20))
-    line:SetJustifyH("LEFT")
-    boardLines[i] = line
+local function FormatWinPct(wins, games)
+    if not games or games <= 0 then
+        return "—"
+    end
+    return string.format("%.1f%%", (wins / games) * 100)
+end
+
+local function ClearBoardRow(i)
+    for _, fs in pairs(boardRows[i]) do
+        fs:SetText("")
+    end
 end
 
 local actionBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
@@ -351,21 +387,33 @@ local function Refresh()
         end
 
         if #state.board == 0 then
-            boardLines[1]:SetText(L.EMPTY)
-            boardLines[1]:SetTextColor(unpack(MUTED))
-            for i = 2, 15 do
-                boardLines[i]:SetText("")
+            for i = 1, BOARD_ROWS do
+                ClearBoardRow(i)
             end
+            boardRows[1].name:SetText(L.EMPTY)
+            boardRows[1].name:SetTextColor(unpack(MUTED))
         else
-            for i = 1, 15 do
+            for i = 1, BOARD_ROWS do
                 local row = state.board[i]
                 if row then
-                    local r, g, b = RankColor(i)
-                    boardLines[i]:SetText(string.format("%2d     %-18s          %4d          %d - %d",
-                        i, row.name, row.rating, row.wins, row.losses))
-                    boardLines[i]:SetTextColor(r, g, b)
+                    local wins = row.wins or 0
+                    local losses = row.losses or 0
+                    local games = row.games or (wins + losses)
+                    local rr, gg, bb = RankColor(i)
+                    local cells = boardRows[i]
+                    cells.rank:SetText(tostring(i))
+                    cells.name:SetText(row.name or "")
+                    cells.rating:SetText(tostring(row.rating or 0))
+                    cells.wins:SetText(tostring(wins))
+                    cells.losses:SetText(tostring(losses))
+                    cells.games:SetText(tostring(games))
+                    cells.winpct:SetText(FormatWinPct(wins, games))
+                    for _, fs in pairs(cells) do
+                        fs:SetTextColor(rr, gg, bb)
+                    end
+                    cells.rating:SetTextColor(RatingColor(row.rating or 0))
                 else
-                    boardLines[i]:SetText("")
+                    ClearBoardRow(i)
                 end
             end
         end

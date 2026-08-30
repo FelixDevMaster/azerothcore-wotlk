@@ -208,30 +208,40 @@ function Handlers.RequestBoard(player, tab)
     local query
 
     if tab == 1 then
-        query = "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM rbg_stats s "
-            .. "INNER JOIN characters c ON c.guid = s.guid ORDER BY s.rating DESC, s.wins DESC LIMIT 15"
+        query = "SELECT c.name, s.rating, s.wins, (s.games - s.wins), s.games FROM rbg_stats s "
+            .. "INNER JOIN characters c ON c.guid = s.guid WHERE s.games > 0 "
+            .. "ORDER BY s.rating DESC, s.wins DESC LIMIT 15"
     elseif boardTeamTypeByTab[tab] then
         query = string.format(
-            "SELECT c.name, atm.personalRating, atm.seasonWins, (atm.seasonGames - atm.seasonWins) "
+            "SELECT c.name, atm.personalRating, atm.seasonWins, (atm.seasonGames - atm.seasonWins), "
+                .. "atm.seasonGames "
                 .. "FROM arena_team_member atm "
                 .. "INNER JOIN arena_team at ON at.arenaTeamId = atm.arenaTeamId AND at.type = %d "
                 .. "INNER JOIN characters c ON c.guid = atm.guid "
+                .. "WHERE atm.seasonGames > 0 "
                 .. "ORDER BY atm.personalRating DESC, atm.seasonWins DESC LIMIT 15", boardTeamTypeByTab[tab])
     else
         query = string.format(
-            "SELECT c.name, s.rating, s.wins, (s.games - s.wins) FROM arena_solo_stats s "
-                .. "INNER JOIN characters c ON c.guid = s.guid WHERE s.bracket = %d "
+            "SELECT c.name, s.rating, s.wins, (s.games - s.wins), s.games FROM arena_solo_stats s "
+                .. "INNER JOIN characters c ON c.guid = s.guid WHERE s.bracket = %d AND s.games > 0 "
                 .. "ORDER BY s.rating DESC, s.wins DESC LIMIT 15", boardBracketByTab[tab] or BRACKET_1V1)
     end
 
     local q = CharDBQuery(query)
     if q then
         repeat
+            local wins = q:GetUInt32(2)
+            local losses = q:GetUInt32(3)
+            local games = q:GetUInt32(4)
+            if games < wins + losses then
+                games = wins + losses
+            end
             rows[#rows + 1] = {
                 name = q:GetString(0),
                 rating = q:GetUInt32(1),
-                wins = q:GetUInt32(2),
-                losses = q:GetUInt32(3)
+                wins = wins,
+                losses = losses,
+                games = games
             }
         until not q:NextRow()
     end
