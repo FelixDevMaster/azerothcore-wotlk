@@ -99,6 +99,7 @@ public:
     static bool IsSpanish(Player const* player);
     [[nodiscard]] std::string GetFormattedTitle(Player const* player, uint8 mode) const;
     void Broadcast(std::string const& message) const;
+    void BroadcastLocalized(std::string const& spanish, std::string const& english) const;
 
 private:
     ChallengeModes() = default;

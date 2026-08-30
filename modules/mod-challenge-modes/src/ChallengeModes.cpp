@@ -46,7 +46,7 @@ char const* ChallengeModes::GetModeName(uint8 mode, bool spanish)
         case CHALLENGE_QUEST_XP_ONLY:
             return spanish ? "Solo XP de misiones" : "Quest XP Only";
         case CHALLENGE_IRON_MAN:
-            return spanish ? "Iron Man" : "Iron Man";
+            return spanish ? "Hombre de Hierro" : "Iron Man";
         default:
             return spanish ? "Desconocido" : "Unknown";
     }
@@ -142,11 +142,13 @@ char const* ChallengeModes::GetModeDescription(uint8 mode, bool spanish)
                   "at level 80. One mode per character.";
         case CHALLENGE_IRON_MAN:
             return spanish
-                ? "IRON MAN: el reglamento mas duro. No puedes resucitar. No ganas puntos de talento. "
+                ? "HOMBRE DE HIERRO: el reglamento mas duro. No puedes resucitar. No ganas puntos de "
+                  "talento (el servidor los anula al subir de nivel y no puedes aprenderlos). "
                   "Solo equipo pobre o comun, sin encantamientos, sin pociones, elixires, frascos ni "
                   "comida con buff. No puedes aprender profesiones extra ni unirte a un grupo. Una "
                   "muerte termina el espiritu de la run. Completas el reto al nivel 80. Un solo modo."
-                : "IRON MAN: the strictest ruleset. You cannot resurrect. You gain no talent points. "
+                : "IRON MAN: the strictest ruleset. You cannot resurrect. You gain no talent points "
+                  "(the server zeroes them on level-up and blocks learning). "
                   "Poor/Common gear only, no enchants, potions, elixirs, flasks or food buffs. No extra "
                   "professions and no groups. Death ends the spirit of the run. Complete at level 80. "
                   "One mode per character.";
@@ -211,8 +213,13 @@ bool ChallengeModes::IsSpanish(Player const* player)
     if (!player || !player->GetSession())
         return false;
 
-    LocaleConstant locale = player->GetSession()->GetSessionDbcLocale();
-    return locale == LOCALE_esES || locale == LOCALE_esMX;
+    auto isEs = [](LocaleConstant loc)
+    {
+        return loc == LOCALE_esES || loc == LOCALE_esMX;
+    };
+
+    WorldSession const* session = player->GetSession();
+    return isEs(session->GetSessionDbcLocale()) || isEs(session->GetSessionDbLocaleIndex());
 }
 
 void ChallengeModes::LoadRewardMap(std::unordered_map<uint8, uint32>& map, std::string const& config)
@@ -457,6 +464,11 @@ bool ChallengeModes::EnableChallenge(Player* player, uint8 mode, std::string& er
 
     SetEnabled(player, mode, true);
     GrantModeTitle(player, mode, true);
+    if (mode == CHALLENGE_IRON_MAN)
+    {
+        player->SetFreeTalentPoints(0);
+        player->InitTalentForLevel();
+    }
     BroadcastStart(player, mode);
     return true;
 }
@@ -533,7 +545,7 @@ void ChallengeModes::GiveConfiguredReward(Player* player, uint8 mode, uint8 /*le
                 config.RewardTitle, GetModeName(mode, false));
     }
 
-    if (config.RewardTalents)
+    if (config.RewardTalents && mode != CHALLENGE_IRON_MAN)
         player->RewardExtraBonusTalentPoints(config.RewardTalents);
 
     if (config.RewardAchievement)
@@ -593,16 +605,32 @@ void ChallengeModes::Broadcast(std::string const& message) const
     sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, message);
 }
 
+void ChallengeModes::BroadcastLocalized(std::string const& spanish, std::string const& english) const
+{
+    if (!_announce)
+        return;
+
+    sWorldSessionMgr->DoForAllOnlinePlayers([&](Player* receiver)
+    {
+        std::string const& text = IsSpanish(receiver) ? spanish : english;
+        if (!text.empty())
+            sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, text, receiver);
+    });
+}
+
 void ChallengeModes::BroadcastStart(Player* player, uint8 mode) const
 {
     if (!player)
         return;
 
     std::string const titled = GetFormattedTitle(player, mode);
-    Broadcast(Acore::StringFormat(
-        "|cff00ccff[Challenge]|r |cffffd100{}|r ha aceptado el modo |cffff2020{}|r. "
-        "|cff00ccff[Challenge]|r |cffffd100{}|r has accepted |cffff2020{}|r.",
-        titled, GetModeName(mode, true), titled, GetModeName(mode, false)));
+    BroadcastLocalized(
+        Acore::StringFormat(
+            "|cff00ccff[Desafio]|r |cffffd100{}|r ha aceptado el modo |cffff2020{}|r.",
+            titled, GetModeName(mode, true)),
+        Acore::StringFormat(
+            "|cff00ccff[Challenge]|r |cffffd100{}|r has accepted |cffff2020{}|r.",
+            titled, GetModeName(mode, false)));
 }
 
 void ChallengeModes::BroadcastDeath(Player* player, uint8 mode, char const* killer) const
@@ -616,15 +644,21 @@ void ChallengeModes::BroadcastDeath(Player* player, uint8 mode, char const* kill
 
     std::string const titled = GetFormattedTitle(player, mode);
     if (mode == CHALLENGE_HARDCORE)
-        Broadcast(Acore::StringFormat(
-            "|cffff2020[Hardcore]|r |cffffd100{}|r ha caido{} y queda perdido para siempre. "
-            "|cffff2020[Hardcore]|r |cffffd100{}|r has fallen{} and is lost forever.",
-            titled, by, titled, by));
+        BroadcastLocalized(
+            Acore::StringFormat(
+                "|cffff2020[Hardcore]|r |cffffd100{}|r ha caido{} y queda perdido para siempre.",
+                titled, by),
+            Acore::StringFormat(
+                "|cffff2020[Hardcore]|r |cffffd100{}|r has fallen{} and is lost forever.",
+                titled, by));
     else
-        Broadcast(Acore::StringFormat(
-            "|cffff2020[Iron Man]|r |cffffd100{}|r ha muerto{} y no puede resucitar. "
-            "|cffff2020[Iron Man]|r |cffffd100{}|r has died{} and cannot resurrect.",
-            titled, by, titled, by));
+        BroadcastLocalized(
+            Acore::StringFormat(
+                "|cffff2020[Hombre de Hierro]|r |cffffd100{}|r ha muerto{} y no puede resucitar.",
+                titled, by),
+            Acore::StringFormat(
+                "|cffff2020[Iron Man]|r |cffffd100{}|r has died{} and cannot resurrect.",
+                titled, by));
 }
 
 void ChallengeModes::BroadcastComplete(Player* player, uint8 mode) const
@@ -633,9 +667,12 @@ void ChallengeModes::BroadcastComplete(Player* player, uint8 mode) const
         return;
 
     std::string const titled = GetFormattedTitle(player, mode);
-    Broadcast(Acore::StringFormat(
-        "|cff00ff00[Challenge]|r |cffffd100{}|r ha completado |cff00ff00{}|r al nivel {}. "
-        "|cff00ff00[Challenge]|r |cffffd100{}|r has completed |cff00ff00{}|r at level {}.",
-        titled, GetModeName(mode, true), player->GetLevel(),
-        titled, GetModeName(mode, false), player->GetLevel()));
+    uint8 const level = player->GetLevel();
+    BroadcastLocalized(
+        Acore::StringFormat(
+            "|cff00ff00[Desafio]|r |cffffd100{}|r ha completado |cff00ff00{}|r al nivel {}.",
+            titled, GetModeName(mode, true), level),
+        Acore::StringFormat(
+            "|cff00ff00[Challenge]|r |cffffd100{}|r has completed |cff00ff00{}|r at level {}.",
+            titled, GetModeName(mode, false), level));
 }

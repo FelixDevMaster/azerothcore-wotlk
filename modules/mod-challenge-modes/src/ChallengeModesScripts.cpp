@@ -9,6 +9,7 @@
 
 #include "ChallengeModes.h"
 #include "Chat.h"
+#include "DBCStructure.h"
 #include "CommandScript.h"
 #include "Creature.h"
 #include "GameObject.h"
@@ -214,6 +215,7 @@ class ChallengeModesPlayerScript : public PlayerScript
 {
 public:
     ChallengeModesPlayerScript() : PlayerScript("ChallengeModesPlayerScript", {
+        PLAYERHOOK_ON_LOAD_FROM_DB,
         PLAYERHOOK_ON_LOGIN,
         PLAYERHOOK_ON_LOGOUT,
         PLAYERHOOK_ON_PLAYER_RELEASED_GHOST,
@@ -223,6 +225,8 @@ public:
         PLAYERHOOK_CAN_RESURRECT,
         PLAYERHOOK_ON_GIVE_EXP,
         PLAYERHOOK_ON_LEVEL_CHANGED,
+        PLAYERHOOK_ON_CALCULATE_TALENTS_POINTS,
+        PLAYERHOOK_CAN_LEARN_TALENT,
         PLAYERHOOK_CAN_EQUIP_ITEM,
         PLAYERHOOK_CAN_USE_ITEM,
         PLAYERHOOK_CAN_APPLY_ENCHANTMENT,
@@ -231,6 +235,12 @@ public:
         PLAYERHOOK_CAN_GROUP_INVITE,
         PLAYERHOOK_CAN_GROUP_ACCEPT
     }) { }
+
+    void OnPlayerLoadFromDB(Player* player) override
+    {
+        if (player)
+            sChallengeModes->LoadPlayer(player);
+    }
 
     void OnPlayerLogin(Player* player) override
     {
@@ -332,6 +342,24 @@ public:
 
         if (sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN))
             player->SetFreeTalentPoints(0);
+    }
+
+    void OnPlayerCalculateTalentsPoints(Player const* player, uint32& talentPointsForLevel) override
+    {
+        if (player && sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN))
+            talentPointsForLevel = 0;
+    }
+
+    bool OnPlayerCanLearnTalent(Player* player, TalentEntry const* /*talent*/, uint32 /*rank*/) override
+    {
+        if (!player || !sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN))
+            return true;
+
+        ChatHandler(player->GetSession()).SendSysMessage(
+            ChallengeModes::IsSpanish(player)
+                ? "Hombre de Hierro: no puedes aprender puntos de talento."
+                : "Iron Man: you cannot learn talent points.");
+        return false;
     }
 
     bool OnPlayerCanEquipItem(Player* player, uint8 /*slot*/, uint16& /*dest*/, Item* item, bool /*swap*/,

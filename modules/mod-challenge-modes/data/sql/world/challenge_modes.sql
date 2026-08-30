@@ -7,10 +7,12 @@ DELETE FROM `creature` WHERE `id1` = 190012 AND `guid` BETWEEN 5900120 AND 59001
 DELETE FROM `creature_template_locale` WHERE `entry` = 190012;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = 190012;
 DELETE FROM `creature_template` WHERE `entry` = 190012;
+DELETE FROM `gossip_menu_option_locale` WHERE `MenuID` = 190012;
 DELETE FROM `gossip_menu_option` WHERE `MenuID` = 190012;
 DELETE FROM `gossip_menu` WHERE `MenuID` = 190012;
 DELETE FROM `npc_text_locale` WHERE `ID` = 190012;
 DELETE FROM `npc_text` WHERE `ID` = 190012;
+DELETE FROM `gameobject_template_locale` WHERE `entry` = 254605;
 DELETE FROM `gameobject_template` WHERE `entry` = 254605;
 
 INSERT INTO `npc_text` (`ID`, `text0_0`, `text0_1`, `BroadcastTextID0`, `lang0`, `Probability0`,
@@ -42,6 +44,24 @@ INSERT INTO `gossip_menu_option` (`MenuID`, `OptionID`, `OptionIcon`, `OptionTex
 (190012, 6, 0, 'Enable Quest XP Only', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
 (190012, 7, 0, 'Enable Iron Man', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340);
 
+INSERT INTO `gossip_menu_option_locale` (`MenuID`, `OptionID`, `Locale`, `OptionText`, `BoxText`) VALUES
+(190012, 0, 'esES', 'Activar Hardcore', ''),
+(190012, 1, 'esES', 'Activar Semi-Hardcore', ''),
+(190012, 2, 'esES', 'Activar Solo fabricado', ''),
+(190012, 3, 'esES', 'Activar Calidad baja', ''),
+(190012, 4, 'esES', 'Activar XP lenta', ''),
+(190012, 5, 'esES', 'Activar XP muy lenta', ''),
+(190012, 6, 'esES', 'Activar Solo XP de misiones', ''),
+(190012, 7, 'esES', 'Activar Hombre de Hierro', ''),
+(190012, 0, 'esMX', 'Activar Hardcore', ''),
+(190012, 1, 'esMX', 'Activar Semi-Hardcore', ''),
+(190012, 2, 'esMX', 'Activar Solo fabricado', ''),
+(190012, 3, 'esMX', 'Activar Calidad baja', ''),
+(190012, 4, 'esMX', 'Activar XP lenta', ''),
+(190012, 5, 'esMX', 'Activar XP muy lenta', ''),
+(190012, 6, 'esMX', 'Activar Solo XP de misiones', ''),
+(190012, 7, 'esMX', 'Activar Hombre de Hierro', '');
+
 INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`,
     `KillCredit1`, `KillCredit2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`,
     `faction`, `npcflag`, `speed_walk`, `speed_run`, `speed_swim`, `speed_flight`, `detection_range`, `rank`,
@@ -68,6 +88,10 @@ INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconNa
     `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES
 (254605, 2, 6925, 'Shrine of Challenge', '', '', '', 1.2, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     0, 0, 0, 0, 0, '', 'gobject_challenge_modes', 0);
+
+INSERT INTO `gameobject_template_locale` (`entry`, `locale`, `name`, `castBarCaption`, `VerifiedBuild`) VALUES
+(254605, 'esES', 'Santuario de los Desafios', '', 12340),
+(254605, 'esMX', 'Santuario de los Desafios', '', 12340);
 
 -- Starting-area keepers (same spots as the original shrine).
 INSERT INTO `creature` (`guid`, `id1`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,

@@ -24,7 +24,7 @@ Challenge modes for AzerothCore 3.3.5a. Activate per-character at the **Keeper o
 | Slow XP | the Patient (172) | 0.5× experience from kills, quests and exploration. |
 | Very Slow XP | the Explorer (78) | 0.25× experience. |
 | Quest XP Only | Loremaster (125) | Experience from quests only. |
-| Iron Man | the Insane (145) | No resurrect, talent points, rare gear, potions/flasks, enchants or groups. Death is announced. |
+| Iron Man / Hombre de Hierro | the Insane (145) | No resurrect, **no talent points** (blocked at calculation and learn), rare gear, potions/flasks, enchants or groups. Death is announced. |
 
 Accepting a mode **grants and equips** that title (stock 3.3.5 `CharTitles.dbc` ids, so the nameplate shows it without a client patch). Change or disable with `<Mode>.RewardTitle` (`0` = no title). Gossip **Info** prints the title plus a longer bilingual explanation.
 
