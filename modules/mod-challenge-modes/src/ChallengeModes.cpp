@@ -16,6 +16,8 @@
 #include "Player.h"
 #include "StringFormat.h"
 #include "WorldSession.h"
+#include "WorldSessionMgr.h"
+#include <limits>
 #include <sstream>
 
 ChallengeModes* ChallengeModes::instance()
@@ -55,32 +57,73 @@ char const* ChallengeModes::GetModeDescription(uint8 mode, bool spanish)
     {
         case CHALLENGE_HARDCORE:
             return spanish
-                ? "Si mueres, quedas como fantasma para siempre."
-                : "If you die you remain a ghost forever.";
+                ? "HARDCORE: una sola vida. Si mueres por un monstruo, un jugador o al liberar tu espiritu, "
+                  "quedas como fantasma para siempre: no puedes resucitar, ni en cementerio ni por hechizo. "
+                  "El servidor anuncia tu caida. El reto se completa al llegar a nivel 80 sin morir. "
+                  "No se puede desactivar y es el unico modo que puede tener este personaje."
+                : "HARDCORE: one life. If you die to a mob, a player or by releasing your spirit you stay a "
+                  "ghost forever — no graveyard, no res spells. The realm announces your fall. Finish by "
+                  "reaching level 80 without dying. Cannot be turned off. One mode per character.";
         case CHALLENGE_SEMI_HARDCORE:
             return spanish
-                ? "Si mueres pierdes el equipo puesto y todo el oro."
-                : "If you die you lose worn gear and all carried gold.";
+                ? "SEMI-HARDCORE: puedes morir, pero cada muerte te despoja de TODO el equipo puesto y de "
+                  "TODO el oro que lleves encima (bolsas y banco no). Sirve para jugar con riesgo sin "
+                  "perder el personaje. Completas el reto al llegar a nivel 80. Un solo modo por personaje."
+                : "SEMI-HARDCORE: you may die, but each death strips ALL worn equipment and ALL gold you "
+                  "are carrying (bags and bank stay). High risk without deleting the character. Complete "
+                  "the run by reaching level 80. One mode per character.";
         case CHALLENGE_SELF_CRAFTED:
             return spanish
-                ? "Solo puedes equipar objetos que hayas fabricado tu."
-                : "You can only equip items you crafted yourself.";
+                ? "SOLO FABRICADO: solo puedes equipar objetos que TÚ hayas fabricado (el creador del "
+                  "objeto debe ser este personaje). No vale loot, ni el AH, ni regalos, ni drops de jefes. "
+                  "Armaduras y armas tienen que salir de tus profesiones. Completas el reto al nivel 80. "
+                  "Un solo modo por personaje."
+                : "SELF-CRAFTED: you may only equip items YOU crafted (item creator must be this character). "
+                  "No loot, auction house, gifts or boss drops. Armor and weapons must come from your "
+                  "professions. Complete the run at level 80. One mode per character.";
         case CHALLENGE_ITEM_QUALITY:
             return spanish
-                ? "Solo puedes equipar objetos pobres o comunes."
-                : "You can only equip Poor or Common quality items.";
+                ? "CALIDAD BAJA: solo puedes equipar objetos pobres (gris) o comunes (blanco). Nada de "
+                  "verdes, azules, epicos ni legendarios: ni de misiones, ni de mazmorras, ni del AH. "
+                  "Las bolsas y objetos no equipables no cuentan. Completas el reto al nivel 80. "
+                  "Un solo modo por personaje."
+                : "ITEM QUALITY: you may only equip Poor (grey) or Common (white) items. No uncommon, rare, "
+                  "epic or legendary gear from quests, dungeons or the auction house. Bags and non-equip "
+                  "items are fine. Complete the run at level 80. One mode per character.";
         case CHALLENGE_SLOW_XP:
-            return spanish ? "Recibes la mitad de experiencia." : "You receive half the normal experience.";
+            return spanish
+                ? "XP LENTA: recibes la mitad de la experiencia (muertes, misiones y exploracion). El "
+                  "subir de nivel tarda el doble. Puedes usar equipo normal. Completas el reto al "
+                  "llegar a nivel 80. Un solo modo por personaje; no se combina con XP muy lenta."
+                : "SLOW XP: you receive half experience from kills, quests and exploration, so leveling "
+                  "takes twice as long. Normal gear is allowed. Complete the run at level 80. One mode "
+                  "per character; cannot be combined with Very Slow XP.";
         case CHALLENGE_VERY_SLOW_XP:
-            return spanish ? "Recibes un cuarto de experiencia." : "You receive a quarter of the normal experience.";
+            return spanish
+                ? "XP MUY LENTA: recibes un 25% de la experiencia normal. Es el ritmo mas exigente: "
+                  "cada nivel cuesta cuatro veces mas. Equipo libre. Completas el reto al nivel 80. "
+                  "Un solo modo por personaje; no se combina con XP lenta."
+                : "VERY SLOW XP: you receive 25% of normal experience. The harshest pace — each level "
+                  "costs four times as much. Gear is unrestricted. Complete the run at level 80. One "
+                  "mode per character; cannot be combined with Slow XP.";
         case CHALLENGE_QUEST_XP_ONLY:
             return spanish
-                ? "Solo las misiones dan experiencia."
-                : "Only quests grant experience.";
+                ? "SOLO XP DE MISIONES: las muertes, la exploracion y los campos de batalla no dan "
+                  "experiencia. Solo las misiones suben de nivel (tu mascota si puede ganar XP de "
+                  "asesinatos). Equipo libre. Completas el reto al nivel 80. Un solo modo por personaje."
+                : "QUEST XP ONLY: kills, exploration and battlegrounds grant no experience. Only quests "
+                  "level you (your pet can still gain kill XP). Gear is unrestricted. Complete the run "
+                  "at level 80. One mode per character.";
         case CHALLENGE_IRON_MAN:
             return spanish
-                ? "Sin resucitar, sin talentos, sin objetos raros, pociones, encantamientos ni grupos."
-                : "No resurrect, talents, rare gear, potions, enchants or groups.";
+                ? "IRON MAN: el reglamento mas duro. No puedes resucitar. No ganas puntos de talento. "
+                  "Solo equipo pobre o comun, sin encantamientos, sin pociones, elixires, frascos ni "
+                  "comida con buff. No puedes aprender profesiones extra ni unirte a un grupo. Una "
+                  "muerte termina el espiritu de la run. Completas el reto al nivel 80. Un solo modo."
+                : "IRON MAN: the strictest ruleset. You cannot resurrect. You gain no talent points. "
+                  "Poor/Common gear only, no enchants, potions, elixirs, flasks or food buffs. No extra "
+                  "professions and no groups. Death ends the spirit of the run. Complete at level 80. "
+                  "One mode per character.";
         default:
             return "";
     }
@@ -115,6 +158,7 @@ void ChallengeModes::LoadRewardMap(std::unordered_map<uint8, uint32>& map, std::
 void ChallengeModes::LoadConfig(bool /*reload*/)
 {
     _enabled = sConfigMgr->GetOption<bool>("ChallengeModes.Enable", true);
+    _announce = sConfigMgr->GetOption<bool>("ChallengeModes.Announce", true);
     _npcEntry = sConfigMgr->GetOption<uint32>("ChallengeModes.NPCEntry", NPC_CHALLENGE_KEEPER);
 
     auto loadMode = [this](uint8 mode, char const* prefix, float defaultXp)
@@ -129,6 +173,14 @@ void ChallengeModes::LoadConfig(bool /*reload*/)
         config.DisableLevel = sConfigMgr->GetOption<uint32>(option("DisableLevel"), 0);
         config.XpMultiplier = sConfigMgr->GetOption<float>(option("XPMultiplier"), defaultXp);
         config.ItemRewardAmount = sConfigMgr->GetOption<uint32>(option("ItemRewardAmount"), 1);
+        config.RewardLevel = sConfigMgr->GetOption<uint32>(option("RewardLevel"), 80);
+        config.RewardItem = sConfigMgr->GetOption<uint32>(option("RewardItem"), 0);
+        config.RewardItemCount = sConfigMgr->GetOption<uint32>(option("RewardItemCount"), 1);
+        config.RewardTitle = sConfigMgr->GetOption<uint32>(option("RewardTitle"), 0);
+        config.RewardGold = sConfigMgr->GetOption<uint32>(option("RewardGold"), 0);
+        config.RewardHonor = sConfigMgr->GetOption<uint32>(option("RewardHonor"), 0);
+        config.RewardAchievement = sConfigMgr->GetOption<uint32>(option("RewardAchievement"), 0);
+        config.RewardTalents = sConfigMgr->GetOption<uint32>(option("RewardTalents"), 0);
         LoadRewardMap(config.TitleRewards, sConfigMgr->GetOption<std::string>(option("TitleRewards"), ""));
         LoadRewardMap(config.TalentRewards, sConfigMgr->GetOption<std::string>(option("TalentRewards"), ""));
         LoadRewardMap(config.ItemRewards, sConfigMgr->GetOption<std::string>(option("ItemRewards"), ""));
@@ -186,7 +238,9 @@ void ChallengeModes::LoadPlayer(Player* player)
 
 void ChallengeModes::UnloadPlayer(ObjectGuid guid)
 {
-    _players.erase(guid.GetCounter());
+    uint32 const id = guid.GetCounter();
+    _players.erase(id);
+    _ironManDeathAnnounced.erase(id);
 }
 
 void ChallengeModes::SavePlayer(ObjectGuid guid)
@@ -271,25 +325,18 @@ bool ChallengeModes::CanActivate(Player const* player) const
     return player->GetLevel() <= 1;
 }
 
-bool ChallengeModes::Conflicts(uint8 mode, ObjectGuid guid) const
+bool ChallengeModes::HasActiveChallenge(ObjectGuid guid) const
 {
-    switch (mode)
-    {
-        case CHALLENGE_HARDCORE:
-            return IsEnabled(guid, CHALLENGE_SEMI_HARDCORE);
-        case CHALLENGE_SEMI_HARDCORE:
-            return IsEnabled(guid, CHALLENGE_HARDCORE);
-        case CHALLENGE_SELF_CRAFTED:
-            return IsEnabled(guid, CHALLENGE_IRON_MAN);
-        case CHALLENGE_IRON_MAN:
-            return IsEnabled(guid, CHALLENGE_SELF_CRAFTED);
-        case CHALLENGE_SLOW_XP:
-            return IsEnabled(guid, CHALLENGE_VERY_SLOW_XP);
-        case CHALLENGE_VERY_SLOW_XP:
-            return IsEnabled(guid, CHALLENGE_SLOW_XP);
-        default:
-            return false;
-    }
+    return GetActiveChallenge(guid).has_value();
+}
+
+Optional<uint8> ChallengeModes::GetActiveChallenge(ObjectGuid guid) const
+{
+    for (uint8 mode = 0; mode <= CHALLENGE_IRON_MAN; ++mode)
+        if (IsEnabled(guid, mode))
+            return mode;
+
+    return {};
 }
 
 bool ChallengeModes::EnableChallenge(Player* player, uint8 mode, std::string& error)
@@ -322,15 +369,16 @@ bool ChallengeModes::EnableChallenge(Player* player, uint8 mode, std::string& er
         return false;
     }
 
-    if (Conflicts(mode, player->GetGUID()))
+    if (HasActiveChallenge(player->GetGUID()))
     {
         error = spanish
-            ? "Ese desafio entra en conflicto con uno que ya tienes activo."
-            : "That challenge conflicts with one you already have active.";
+            ? "Este personaje ya tiene un modo de juego. Solo se permite uno."
+            : "This character already has a challenge mode. Only one is allowed.";
         return false;
     }
 
     SetEnabled(player, mode, true);
+    BroadcastStart(player, mode);
     return true;
 }
 
@@ -373,6 +421,12 @@ void ChallengeModes::GiveLevelRewards(Player* player, uint8 /*oldLevel*/)
         if (auto it = config.ItemRewards.find(level); it != config.ItemRewards.end())
             player->SendItemRetrievalMail({ { it->second, config.ItemRewardAmount } });
 
+        if (config.RewardLevel && config.RewardLevel == level)
+        {
+            GiveConfiguredReward(player, mode, level);
+            BroadcastComplete(player, mode);
+        }
+
         if (config.DisableLevel && config.DisableLevel <= level)
         {
             SetEnabled(player, mode, false);
@@ -381,4 +435,123 @@ void ChallengeModes::GiveLevelRewards(Player* player, uint8 /*oldLevel*/)
                 GetModeName(mode, spanish));
         }
     }
+}
+
+void ChallengeModes::GiveConfiguredReward(Player* player, uint8 mode, uint8 /*level*/)
+{
+    ChallengeModeConfig const& config = _modes[mode];
+    bool const spanish = IsSpanish(player);
+
+    if (config.RewardTitle)
+    {
+        if (CharTitlesEntry const* title = sCharTitlesStore.LookupEntry(config.RewardTitle))
+            player->SetTitle(title);
+        else
+            LOG_ERROR("module.challengemodes", "Invalid RewardTitle {} for {}",
+                config.RewardTitle, GetModeName(mode, false));
+    }
+
+    if (config.RewardTalents)
+        player->RewardExtraBonusTalentPoints(config.RewardTalents);
+
+    if (config.RewardAchievement)
+    {
+        if (AchievementEntry const* achievement = sAchievementStore.LookupEntry(config.RewardAchievement))
+            player->CompletedAchievement(achievement);
+        else
+            LOG_ERROR("module.challengemodes", "Invalid RewardAchievement {} for {}",
+                config.RewardAchievement, GetModeName(mode, false));
+    }
+
+    if (config.RewardItem)
+        player->SendItemRetrievalMail({ { config.RewardItem, config.RewardItemCount ? config.RewardItemCount : 1 } });
+
+    if (config.RewardGold)
+    {
+        int32 copper = config.RewardGold > uint32(std::numeric_limits<int32>::max())
+            ? std::numeric_limits<int32>::max()
+            : int32(config.RewardGold);
+        player->ModifyMoney(copper, false);
+    }
+
+    if (config.RewardHonor)
+        player->ModifyHonorPoints(int32(config.RewardHonor));
+
+    ChatHandler(player->GetSession()).PSendSysMessage(
+        spanish ? "Has completado {} y recibes las recompensas configuradas."
+                : "You completed {} and received the configured rewards.",
+        GetModeName(mode, spanish));
+}
+
+void ChallengeModes::HandlePlayerDeath(Player* player, char const* killer)
+{
+    if (!player)
+        return;
+
+    if (IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE))
+    {
+        if (!IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE_DEAD))
+        {
+            SetEnabled(player, CHALLENGE_HARDCORE_DEAD, true);
+            BroadcastDeath(player, CHALLENGE_HARDCORE, killer);
+        }
+        return;
+    }
+
+    if (IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN) &&
+        _ironManDeathAnnounced.insert(player->GetGUID().GetCounter()).second)
+        BroadcastDeath(player, CHALLENGE_IRON_MAN, killer);
+}
+
+void ChallengeModes::Broadcast(std::string const& message) const
+{
+    if (!_announce || message.empty())
+        return;
+
+    sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, message);
+}
+
+void ChallengeModes::BroadcastStart(Player* player, uint8 mode) const
+{
+    if (!player)
+        return;
+
+    Broadcast(Acore::StringFormat(
+        "|cff00ccff[Challenge]|r |cffffd100{}|r ha aceptado el modo |cffff2020{}|r. "
+        "|cff00ccff[Challenge]|r |cffffd100{}|r has accepted |cffff2020{}|r.",
+        player->GetName(), GetModeName(mode, true),
+        player->GetName(), GetModeName(mode, false)));
+}
+
+void ChallengeModes::BroadcastDeath(Player* player, uint8 mode, char const* killer) const
+{
+    if (!player)
+        return;
+
+    std::string const by = (killer && killer[0])
+        ? Acore::StringFormat(" ({})", killer)
+        : "";
+
+    if (mode == CHALLENGE_HARDCORE)
+        Broadcast(Acore::StringFormat(
+            "|cffff2020[Hardcore]|r |cffffd100{}|r ha caido{} y queda perdido para siempre. "
+            "|cffff2020[Hardcore]|r |cffffd100{}|r has fallen{} and is lost forever.",
+            player->GetName(), by, player->GetName(), by));
+    else
+        Broadcast(Acore::StringFormat(
+            "|cffff2020[Iron Man]|r |cffffd100{}|r ha muerto{} y no puede resucitar. "
+            "|cffff2020[Iron Man]|r |cffffd100{}|r has died{} and cannot resurrect.",
+            player->GetName(), by, player->GetName(), by));
+}
+
+void ChallengeModes::BroadcastComplete(Player* player, uint8 mode) const
+{
+    if (!player)
+        return;
+
+    Broadcast(Acore::StringFormat(
+        "|cff00ff00[Challenge]|r |cffffd100{}|r ha completado |cff00ff00{}|r al nivel {}. "
+        "|cff00ff00[Challenge]|r |cffffd100{}|r has completed |cff00ff00{}|r at level {}.",
+        player->GetName(), GetModeName(mode, true), player->GetLevel(),
+        player->GetName(), GetModeName(mode, false), player->GetLevel()));
 }

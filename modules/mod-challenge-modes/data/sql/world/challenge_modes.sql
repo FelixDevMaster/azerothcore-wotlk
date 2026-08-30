@@ -16,15 +16,15 @@ DELETE FROM `gameobject_template` WHERE `entry` = 254605;
 INSERT INTO `npc_text` (`ID`, `text0_0`, `text0_1`, `BroadcastTextID0`, `lang0`, `Probability0`,
     `em0_0`, `em0_1`, `em0_2`, `em0_3`, `em0_4`, `em0_5`, `VerifiedBuild`) VALUES
 (190012,
-    'The Keeper of Challenges weighs your resolve.$B$BYou may accept a challenge only at level 1 (or level 55 if you are a Death Knight). Once accepted, a challenge cannot be turned off.$B$BChoose carefully.',
+    'The Keeper of Challenges weighs your resolve.$B$BYou may accept ONE challenge per character, and only at level 1 (or level 55 if you are a Death Knight). Once accepted it cannot be turned off.$B$BThe realm announces when you accept a mode, when a Hardcore or Iron Man champion falls, and when you finish the run at level 80.$B$BOpen Info on a mode to read the full rules. Choose carefully.',
     '', 0, 0, 1, 0, 0, 0, 0, 0, 0, 12340);
 
 INSERT INTO `npc_text_locale` (`ID`, `Locale`, `Text0_0`, `Text0_1`) VALUES
 (190012, 'esES',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
     ''),
 (190012, 'esMX',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
     '');
 
 INSERT INTO `gossip_menu` (`MenuID`, `TextID`) VALUES

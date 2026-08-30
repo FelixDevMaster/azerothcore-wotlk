@@ -60,9 +60,15 @@ void BuildChallengeGossip(Player* player)
     }
 
     if (!active.empty())
+    {
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-            Acore::StringFormat(spanish ? "Activos: {}" : "Active: {}", active),
+            Acore::StringFormat(spanish ? "Modo activo: {}" : "Active mode: {}", active),
             GOSSIP_SENDER_MAIN, GOSSIP_CHALLENGE_HELLO);
+        AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+            spanish ? "Solo se permite un modo por personaje."
+                    : "Only one challenge mode is allowed per character.",
+            GOSSIP_SENDER_MAIN, GOSSIP_CHALLENGE_HELLO);
+    }
 
     if (sChallengeModes->IsEnabled(guid, CHALLENGE_HARDCORE_DEAD))
     {
@@ -90,7 +96,7 @@ void BuildChallengeGossip(Player* player)
                 ChallengeModes::GetModeName(mode, spanish)),
             GOSSIP_SENDER_MAIN, uint32(GOSSIP_CHALLENGE_INFO_BASE) + mode);
 
-        if (!canActivate || sChallengeModes->Conflicts(mode, guid))
+        if (!canActivate || sChallengeModes->HasActiveChallenge(guid))
             continue;
 
         std::string const label = Acore::StringFormat(
@@ -99,8 +105,8 @@ void BuildChallengeGossip(Player* player)
 
         if (mode == CHALLENGE_HARDCORE || mode == CHALLENGE_IRON_MAN)
             AddGossipItemFor(player, GOSSIP_ICON_BATTLE, label, GOSSIP_SENDER_MAIN, action,
-                spanish ? "No se puede desactivar. ¿Continuar?"
-                        : "This cannot be turned off. Continue?",
+                spanish ? "Solo un modo por personaje y no se puede desactivar. ¿Continuar?"
+                        : "One mode per character and it cannot be turned off. Continue?",
                 0, false);
         else
             AddGossipItemFor(player, GOSSIP_ICON_BATTLE, label, GOSSIP_SENDER_MAIN, action);
@@ -114,9 +120,13 @@ bool HandleChallengeGossipSelect(Player* player, uint32 action)
     if (action >= GOSSIP_CHALLENGE_INFO_BASE && action < GOSSIP_CHALLENGE_INFO_BASE + CHALLENGE_MODE_MAX)
     {
         uint8 mode = static_cast<uint8>(action - GOSSIP_CHALLENGE_INFO_BASE);
-        ChatHandler(player->GetSession()).PSendSysMessage("{}: {}",
-            ChallengeModes::GetModeName(mode, spanish),
-            ChallengeModes::GetModeDescription(mode, spanish));
+        ChatHandler handler(player->GetSession());
+        handler.PSendSysMessage("|cff00ccff===== {} =====|r",
+            ChallengeModes::GetModeName(mode, spanish));
+        handler.SendSysMessage(ChallengeModes::GetModeDescription(mode, spanish));
+        handler.SendSysMessage(spanish
+            ? "Solo un modo por personaje. El reto se completa al nivel 80 (recompensas en el .conf)."
+            : "One mode per character. The run completes at level 80 (rewards in the .conf).");
         return true;
     }
 
@@ -130,9 +140,6 @@ bool HandleChallengeGossipSelect(Player* player, uint32 action)
             return false;
         }
 
-        ChatHandler(player->GetSession()).PSendSysMessage(
-            spanish ? "Desafio activado: {}." : "Challenge enabled: {}.",
-            ChallengeModes::GetModeName(mode, spanish));
         return true;
     }
 
@@ -253,31 +260,27 @@ public:
 
     void OnPlayerReleasedGhost(Player* player) override
     {
-        if (!player || !sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE))
-            return;
-
-        sChallengeModes->SetEnabled(player, CHALLENGE_HARDCORE_DEAD, true);
+        if (player)
+            sChallengeModes->HandlePlayerDeath(player, nullptr);
     }
 
-    void OnPlayerPVPKill(Player* /*killer*/, Player* killed) override
+    void OnPlayerPVPKill(Player* killer, Player* killed) override
     {
         if (!killed)
             return;
 
-        if (sChallengeModes->IsEnabled(killed->GetGUID(), CHALLENGE_HARDCORE))
-            sChallengeModes->SetEnabled(killed, CHALLENGE_HARDCORE_DEAD, true);
+        sChallengeModes->HandlePlayerDeath(killed, killer ? killer->GetName().c_str() : nullptr);
 
         if (sChallengeModes->IsEnabled(killed->GetGUID(), CHALLENGE_SEMI_HARDCORE))
             StripEquippedGearAndGold(killed);
     }
 
-    void OnPlayerKilledByCreature(Creature* /*killer*/, Player* killed) override
+    void OnPlayerKilledByCreature(Creature* killer, Player* killed) override
     {
         if (!killed)
             return;
 
-        if (sChallengeModes->IsEnabled(killed->GetGUID(), CHALLENGE_HARDCORE))
-            sChallengeModes->SetEnabled(killed, CHALLENGE_HARDCORE_DEAD, true);
+        sChallengeModes->HandlePlayerDeath(killed, killer ? killer->GetName().c_str() : nullptr);
 
         if (sChallengeModes->IsEnabled(killed->GetGUID(), CHALLENGE_SEMI_HARDCORE))
             StripEquippedGearAndGold(killed);
@@ -305,7 +308,7 @@ public:
             sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE_DEAD) ||
             sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN))
         {
-            sChallengeModes->SetEnabled(player, CHALLENGE_HARDCORE_DEAD, true);
+            sChallengeModes->HandlePlayerDeath(player, nullptr);
             player->KillPlayer();
         }
     }
@@ -486,14 +489,7 @@ public:
         {
             return sChallengeModes->IsModuleEnabled() && player &&
                 (sChallengeModes->CanActivate(player) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_HARDCORE) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_SEMI_HARDCORE) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_SELF_CRAFTED) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_ITEM_QUALITY) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_SLOW_XP) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_VERY_SLOW_XP) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_QUEST_XP_ONLY) ||
-                    sChallengeModes->IsEnabled(player->GetGUID(), CHALLENGE_IRON_MAN));
+                    sChallengeModes->HasActiveChallenge(player->GetGUID()));
         }
     };
 
