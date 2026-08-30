@@ -1,0 +1,112 @@
+#
+# Challenge Modes for AzerothCore 3.3.5a
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# CHALLENGE MODES
+#
+#    ChallengeModes.Enable
+#        Description: Master switch. If 0, the keeper gossip still opens but cannot start a challenge.
+#        Default:     1
+#
+#    ChallengeModes.NPCEntry
+#        Description: creature_template.entry of the Keeper of Challenges (must match SQL).
+#        Default:     190012
+#
+#    Modes:
+#        Hardcore        - death is permanent (ghost, cannot resurrect)
+#        SemiHardcore    - death destroys worn gear and carried gold
+#        SelfCrafted     - only self-crafted equipment
+#        ItemQualityLevel- Poor / Common gear only
+#        SlowXpGain      - 0.5x experience
+#        VerySlowXpGain  - 0.25x experience
+#        QuestXpOnly     - experience from quests only
+#        IronMan         - no resurrect, talents, rare gear, potions, enchants or groups
+#
+#    Per-mode options, with <M> being Hardcore, SemiHardcore, SelfCrafted,
+#    ItemQualityLevel, SlowXpGain, VerySlowXpGain, QuestXpOnly or IronMan:
+#        <M>.Enable              (default 1)
+#        <M>.XPMultiplier        (default 1, or 0.50 / 0.25 for slow XP)
+#        <M>.DisableLevel        (default 0 = never auto-disable)
+#        <M>.TitleRewards        ("60 143, 80 145" = level then CharTitles.dbc id)
+#        <M>.TalentRewards       ("60 2, 80 5")
+#        <M>.ItemRewards         ("80 54811")
+#        <M>.ItemRewardAmount    (default 1)
+#        <M>.AchievementReward   ("80 1234")
+#
+
+ChallengeModes.Enable = 1
+ChallengeModes.NPCEntry = 190012
+
+Hardcore.Enable = 1
+Hardcore.TitleRewards = ""
+Hardcore.XPMultiplier = 1
+Hardcore.TalentRewards = ""
+Hardcore.ItemRewards = ""
+Hardcore.ItemRewardAmount = 1
+Hardcore.DisableLevel = 0
+Hardcore.AchievementReward = ""
+
+SemiHardcore.Enable = 1
+SemiHardcore.TitleRewards = ""
+SemiHardcore.XPMultiplier = 1
+SemiHardcore.TalentRewards = ""
+SemiHardcore.ItemRewards = ""
+SemiHardcore.ItemRewardAmount = 1
+SemiHardcore.DisableLevel = 0
+SemiHardcore.AchievementReward = ""
+
+SelfCrafted.Enable = 1
+SelfCrafted.TitleRewards = ""
+SelfCrafted.XPMultiplier = 1
+SelfCrafted.TalentRewards = ""
+SelfCrafted.ItemRewards = ""
+SelfCrafted.ItemRewardAmount = 1
+SelfCrafted.DisableLevel = 0
+SelfCrafted.AchievementReward = ""
+
+ItemQualityLevel.Enable = 1
+ItemQualityLevel.TitleRewards = ""
+ItemQualityLevel.XPMultiplier = 1
+ItemQualityLevel.TalentRewards = ""
+ItemQualityLevel.ItemRewards = ""
+ItemQualityLevel.ItemRewardAmount = 1
+ItemQualityLevel.DisableLevel = 0
+ItemQualityLevel.AchievementReward = ""
+
+SlowXpGain.Enable = 1
+SlowXpGain.TitleRewards = ""
+SlowXpGain.TalentRewards = ""
+SlowXpGain.ItemRewards = ""
+SlowXpGain.ItemRewardAmount = 1
+SlowXpGain.DisableLevel = 0
+SlowXpGain.XPMultiplier = 0.50
+SlowXpGain.AchievementReward = ""
+
+VerySlowXpGain.Enable = 1
+VerySlowXpGain.TitleRewards = ""
+VerySlowXpGain.TalentRewards = ""
+VerySlowXpGain.ItemRewards = ""
+VerySlowXpGain.ItemRewardAmount = 1
+VerySlowXpGain.DisableLevel = 0
+VerySlowXpGain.XPMultiplier = 0.25
+VerySlowXpGain.AchievementReward = ""
+
+QuestXpOnly.Enable = 1
+QuestXpOnly.TitleRewards = ""
+QuestXpOnly.XPMultiplier = 1
+QuestXpOnly.TalentRewards = ""
+QuestXpOnly.ItemRewards = ""
+QuestXpOnly.ItemRewardAmount = 1
+QuestXpOnly.DisableLevel = 0
+QuestXpOnly.AchievementReward = ""
+
+IronMan.Enable = 1
+IronMan.TitleRewards = ""
+IronMan.TalentRewards = ""
+IronMan.ItemRewards = ""
+IronMan.ItemRewardAmount = 1
+IronMan.DisableLevel = 0
+IronMan.XPMultiplier = 1
+IronMan.AchievementReward = ""

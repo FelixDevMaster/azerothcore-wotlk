@@ -127,3 +127,6 @@ __pycache__/
 #  !modules/yourmodule
 #
 # ==================
+
+!/modules/mod-challenge-modes/
+!/modules/mod-challenge-modes/**
