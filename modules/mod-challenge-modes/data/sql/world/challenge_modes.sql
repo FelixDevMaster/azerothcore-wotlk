@@ -3,7 +3,7 @@
 -- ScriptName must stay npc_challenge_modes / gobject_challenge_modes.
 -- Spawn the NPC with: .npc add 190012
 
-DELETE FROM `creature` WHERE `id1` = 190012 AND `guid` BETWEEN 5900120 AND 5900128;
+DELETE FROM `creature` WHERE `id` = 190012 AND `guid` BETWEEN 5900120 AND 5900128;
 DELETE FROM `creature_template_locale` WHERE `entry` = 190012;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = 190012;
 DELETE FROM `creature_template` WHERE `entry` = 190012;
@@ -70,7 +70,7 @@ INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconNa
     0, 0, 0, 0, 0, '', 'gobject_challenge_modes', 0);
 
 -- Starting-area keepers (same spots as the original shrine).
-INSERT INTO `creature` (`guid`, `id1`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
+/*INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
     `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`,
     `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `ScriptName`, `VerifiedBuild`, `CreateObject`,
     `Comment`) VALUES
@@ -83,3 +83,4 @@ INSERT INTO `creature` (`guid`, `id1`, `map`, `spawnMask`, `phaseMask`, `equipme
 (5900126, 190012, 1, 1, 1, 0, -2994.22, -136.321, 77.9491, 1.05411, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Mulgore'),
 (5900127, 190012, 530, 1, 1, 0, 10452, -6389.91, 43.7962, 1.84851, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Eversong'),
 (5900128, 190012, 609, 1, 1, 0, 2415.84, -5649.91, 376.819, 1.87356, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Ebon Hold');
+*/
