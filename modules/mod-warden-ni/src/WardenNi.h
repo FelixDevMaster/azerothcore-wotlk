@@ -33,9 +33,10 @@ private:
     WardenNi() = default;
 
     bool _enabled = true;
-    bool _announceGMs = true;
+    bool _announceWorld = true;
+    bool _announceGMs = false;
     bool _notifyPlayer = true;
-    uint32 _kickDelaySeconds = 5;
+    uint32 _kickDelaySeconds = 0;
     uint32 _requeueMs = 60000;
 
     std::unordered_set<ObjectGuid> _pendingKicks;

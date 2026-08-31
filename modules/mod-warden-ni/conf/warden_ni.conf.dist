@@ -1,41 +1,44 @@
 #
-# Warden: ni / Nevermore loader detection
+# Warden: che paladin / ni loader detection
 # Copy to the worldserver config directory or merge into worldserver.conf
 #
 
 ###################################################################################################
-# NI LOADER WARDEN
+# NI LOADER / CHE PALADIN WARDEN
 #
-# Detects the ni-v3 (Nevermore Internal) Lua unlocker/rotation bot when the player activates it
-# in-game. The character may log in normally. On detection the server announces the event to GMs
-# and kicks the player after a short delay. The account is never banned.
+# Detects the ni-v3 loader when the player activates a profile (che paladin prints
+# "Primary started" / "che paladin"). Announces to the entire realm and kicks. No ban.
 #
-# Requires Warden.Enabled = 1 (Windows clients).
+# Requires Warden.Enabled = 1 and AddonChannel = 1 (Windows clients).
 #
 #    NiWarden.Enable
-#        Description: Master switch for the watcher payload and delayed kick.
+#        Description: Master switch.
 #        Default:     1
 #
 #    NiWarden.KickDelaySeconds
 #        Description: Seconds to wait after detection before kicking. 0 = kick immediately.
-#        Default:     5
+#        Default:     0
+#
+#    NiWarden.AnnounceWorld
+#        Description: Broadcast a system message to every online player.
+#        Default:     1
 #
 #    NiWarden.AnnounceGMs
-#        Description: Send a system message to online GMs when ni loader is detected.
-#        Default:     1
+#        Description: Extra system message to online GMs only.
+#        Default:     0
 #
 #    NiWarden.NotifyPlayer
 #        Description: Notify the offending player before the kick.
 #        Default:     1
 #
 #    NiWarden.RequeueSeconds
-#        Description: Re-inject the watcher payload this often so /reload ui cannot drop it.
-#                     0 disables re-injection after login.
+#        Description: Re-inject the watcher this often so /reload ui cannot drop it.
 #        Default:     60
 #
 
 NiWarden.Enable = 1
-NiWarden.KickDelaySeconds = 5
-NiWarden.AnnounceGMs = 1
+NiWarden.KickDelaySeconds = 0
+NiWarden.AnnounceWorld = 1
+NiWarden.AnnounceGMs = 0
 NiWarden.NotifyPlayer = 1
 NiWarden.RequeueSeconds = 60

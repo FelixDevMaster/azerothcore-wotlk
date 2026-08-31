@@ -21,6 +21,7 @@
 #include "WardenPayloadMgr.h"
 #include "WorldScript.h"
 #include "WorldSession.h"
+#include "WorldSessionMgr.h"
 
 namespace
 {
@@ -31,16 +32,18 @@ constexpr uint16 NI_PAYLOAD_NI_ID = 9002;
 constexpr uint32 NI_RETRY_MS = 3000;
 constexpr char const NI_DETECT_PREFIX[] = "_NI\t";
 
-// ni-v3 never puts `ni` on _G (local upvalue + anti-warden). Activating a profile prints
-// "Primary started" (see addon/Core/components/main_window/init.lua). Hook that instead.
+// ni-v3 never puts `ni` on _G. Profile toggle prints "Primary started"; the rotation
+// folder/name is "che paladin". Warden payload length is a uint8 (max 255 bytes).
 constexpr char NI_HOOK_LUA[] =
     "local f=ChatFrame1 if f and not f.__n then f.__n=1 local o=f.AddMessage "
-    "f.AddMessage=function(s,m,...) if type(m)==\"string\" and m:find(\"Primary started\") then "
-    "SendAddonMessage(\"_NI\",\"1\",\"GUILD\") end if o then return o(s,m,...) end end end";
+    "f.AddMessage=function(s,m,...) if type(m)==\"string\" and "
+    "(m:find(\"Primary started\") or m:find(\"che paladin\")) then "
+    "SendAddonMessage(\"_NI\",\"1\",\"GUILD\") end return o(s,m,...) end end";
 
 constexpr char NI_SCAN_LUA[] =
     "local f=ChatFrame1 if f then for i=1,f:GetNumMessages() do local t=f:GetMessageInfo(i) "
-    "if t and t:find(\"Primary started\") then SendAddonMessage(\"_NI\",\"1\",\"GUILD\") break end end end";
+    "if t and (t:find(\"Primary started\") or t:find(\"che paladin\")) then "
+    "SendAddonMessage(\"_NI\",\"1\",\"GUILD\") break end end end";
 
 constexpr char NI_GLOBAL_LUA[] =
     "local n=_G[string.char(110,105)] if type(n)==\"table\" then SendAddonMessage(\"_NI\",\"1\",\"GUILD\") end";
@@ -73,15 +76,16 @@ WardenNi* WardenNi::instance()
 void WardenNi::LoadConfig()
 {
     _enabled = sConfigMgr->GetOption<bool>("NiWarden.Enable", true);
-    _kickDelaySeconds = sConfigMgr->GetOption<uint32>("NiWarden.KickDelaySeconds", 5);
-    _announceGMs = sConfigMgr->GetOption<bool>("NiWarden.AnnounceGMs", true);
+    _kickDelaySeconds = sConfigMgr->GetOption<uint32>("NiWarden.KickDelaySeconds", 0);
+    _announceWorld = sConfigMgr->GetOption<bool>("NiWarden.AnnounceWorld", true);
+    _announceGMs = sConfigMgr->GetOption<bool>("NiWarden.AnnounceGMs", false);
     _notifyPlayer = sConfigMgr->GetOption<bool>("NiWarden.NotifyPlayer", true);
 
     uint32 const requeueSeconds = sConfigMgr->GetOption<uint32>("NiWarden.RequeueSeconds", 60);
     _requeueMs = requeueSeconds * IN_MILLISECONDS;
 
-    LOG_INFO("module.wardenni", "Ni Warden: {} (kick delay {}s)",
-        _enabled ? "enabled" : "disabled", _kickDelaySeconds);
+    LOG_INFO("module.wardenni", "Ni Warden: {} (world announce {}, kick delay {}s)",
+        _enabled ? "enabled" : "disabled", _announceWorld ? "yes" : "no", _kickDelaySeconds);
 }
 
 bool WardenNi::QueueWatcher(Player* player, bool forceChecks)
@@ -140,24 +144,41 @@ bool WardenNi::HandleDetection(Player* player)
     uint32 const accountId = session->GetAccountId();
 
     LOG_INFO("warden",
-        "Player {} ({}, account {}) activated ni loader. Kick in {} seconds (no ban).",
+        "Player {} ({}, account {}) activated che paladin / ni loader. Kick in {} seconds (no ban).",
         playerName, playerGuid, accountId, delay);
+
+    if (_announceWorld)
+    {
+        std::string const worldMsg = delay
+            ? Acore::StringFormat(
+                "|cffff0000[Warden]|r {} ha activado el script che paladin (ni loader). "
+                "Expulsado en {} segundos.",
+                playerName, delay)
+            : Acore::StringFormat(
+                "|cffff0000[Warden]|r {} ha activado el script che paladin (ni loader). "
+                "Ha sido expulsado.",
+                playerName);
+
+        sWorldSessionMgr->SendServerMessage(SERVER_MSG_STRING, worldMsg);
+        ChatHandler(nullptr).SendWorldText("{}", worldMsg);
+    }
 
     if (_announceGMs)
     {
         ChatHandler(nullptr).SendGMText(
-            "Warden: player {} ({}, account {}) activated ni loader. Kick in {} seconds (no ban).",
+            "Warden: player {} ({}, account {}) activated che paladin / ni loader. "
+            "Kick in {} seconds (no ban).",
             playerName, playerGuid, accountId, delay);
     }
 
-    if (_notifyPlayer)
+    if (_notifyPlayer && delay)
     {
         bool const spanish = IsSpanish(player);
         std::string const notice = spanish
             ? Acore::StringFormat(
-                "Se detecto el script ni loader. Desconexion en {} segundos.", delay)
+                "Se detecto el script che paladin (ni loader). Desconexion en {} segundos.", delay)
             : Acore::StringFormat(
-                "ni loader script detected. You will be disconnected in {} seconds.", delay);
+                "che paladin (ni loader) detected. You will be disconnected in {} seconds.", delay);
 
         ChatHandler(session).SendSysMessage(notice);
         ChatHandler(session).SendNotification(notice);
@@ -165,7 +186,7 @@ bool WardenNi::HandleDetection(Player* player)
 
     if (!delay)
     {
-        session->KickPlayer("Warden: ni loader detected");
+        session->KickPlayer("Warden: che paladin / ni loader detected");
         return true;
     }
 
@@ -175,7 +196,7 @@ bool WardenNi::HandleDetection(Player* player)
         if (!target || !target->GetSession())
             return;
 
-        target->GetSession()->KickPlayer("Warden: ni loader detected");
+        target->GetSession()->KickPlayer("Warden: che paladin / ni loader detected");
     }, Seconds(delay));
 
     return true;
