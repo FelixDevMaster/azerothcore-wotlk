@@ -6,6 +6,7 @@
 #
 #    Azerothcore Racial Trait NPC Cost
 #        For a cost, you can swap our you current racial traits for that of another.
+#        Only races that can play the character's class (playercreateinfo) are offered.
 #
 #    Azerothcore.Racial.Trait.Swap.Announce.enable
 #         Description: Announces Module when player logs in.

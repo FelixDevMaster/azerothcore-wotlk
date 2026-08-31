@@ -5,6 +5,9 @@
 ## Description
 
 - Racial Trait NPC, that allows you, for a ingame cost of gold (configurable), to trade out your racial traits for another.
+- Race options are limited to combinations that exist for the player's class in
+  `playercreateinfo` (the same source used for character creation). Example: a
+  Paladin cannot select Orc racials because Paladins cannot be Orcs.
 
 ## How to use ingame
 
