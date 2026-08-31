@@ -1,0 +1,36 @@
+[worldserver]
+
+###################################################################################################
+#Azerothcore Racial Trait Swap NPC  #
+#####################################
+#
+#    Azerothcore Racial Trait NPC Cost
+#        For a cost, you can swap our you current racial traits for that of another.
+#        Only races that can play the character's class (playercreateinfo) are offered.
+#
+#    Azerothcore.Racial.Trait.Swap.Announce.enable
+#         Description: Announces Module when player logs in.
+#         Default:    0 - (Disabled)
+#                     1 - (Enabled)
+
+Azerothcore.Racial.Trait.Swap.Announce.enable = 1
+
+#
+#    Racial.Traits.Swap.Gold
+#         Description:  Cost in gold for Racial Trait Exchange.
+#         Default:    0 - (Zero Gold Free)
+#                     10 - (Ten Gold Cost)
+
+Racial.Traits.Swap.Gold = 10
+
+#
+#    Racial.Traits.Swap.MaxPerAccount
+#         Description:  Maximum number of racial trait swaps allowed per account.
+#                       Set to 0 to disable the limit entirely.
+#         Default:    5  - (Five swaps per account)
+#                     0  - (Unlimited)
+
+Racial.Traits.Swap.MaxPerAccount = 5
+
+#
+###################################################################################################
