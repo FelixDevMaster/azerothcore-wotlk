@@ -1,0 +1,1294 @@
+/*
+ *MIT License
+ *
+ *Copyright (c) 2023 Azerothcore
+ *
+ *Permission is hereby granted, free of charge, to any person obtaining a copy
+ *of this software and associated documentation files (the "Software"), to deal
+ *in the Software without restriction, including without limitation the rights
+ *to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *copies of the Software, and to permit persons to whom the Software is
+ *furnished to do so, subject to the following conditions:
+ *
+ *The above copyright notice and this permission notice shall be included in all
+ *copies or substantial portions of the Software.
+ *
+ *THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *SOFTWARE.
+ *
+ * Racial Traits Swap NPC For Azerothcore Custom Changes Branch
+ * Written by SPP DEV MDIC
+ * SQL Assistance by Nemesis Dev Jinnai
+ * Modified for Azerothcore
+ */
+
+#include "Chat.h"
+#include "Config.h"
+#include "Creature.h"
+#include "DatabaseEnv.h"
+#include "GameEventMgr.h"
+#include "Item.h"
+#include "ItemEnchantmentMgr.h"
+#include "ObjectMgr.h"
+#include "Player.h"
+#include "ScriptMgr.h"
+#include "ScriptedCreature.h"
+#include "ScriptedGossip.h"
+#include "WorldSession.h"
+#include <string>
+
+#define LOCALE_RACESWAP_0 "Racial Trait Swap"
+#define LOCALE_RACESWAP_1 "인종 특성 교환"
+#define LOCALE_RACESWAP_2 "Échange de traits raciaux"
+#define LOCALE_RACESWAP_3 "Rassenmerkmalswechsel"
+#define LOCALE_RACESWAP_4 "種族特質交換"
+#define LOCALE_RACESWAP_5 "種族特質交換"
+#define LOCALE_RACESWAP_6 "Intercambio de rasgos raciales"
+#define LOCALE_RACESWAP_7 "Intercambio de rasgos raciales"
+#define LOCALE_RACESWAP_8 "Обмен расовыми особенностями"
+
+#define LOCALE_EXIT_0 "[EXIT]"
+#define LOCALE_EXIT_1 "[출구]"
+#define LOCALE_EXIT_2 "[SORTIR]"
+#define LOCALE_EXIT_3 "[AUSFAHRT]"
+#define LOCALE_EXIT_4 "[出口]"
+#define LOCALE_EXIT_5 "[出口]"
+#define LOCALE_EXIT_6 "[SALIDA]"
+#define LOCALE_EXIT_7 "[SALIDA]"
+#define LOCALE_EXIT_8 "[ВЫХОД]"
+
+#define LOCALE_BACK_0 "[BACK]"
+#define LOCALE_BACK_1 "[출구]"
+#define LOCALE_BACK_2 "[RETOUR]"
+#define LOCALE_BACK_3 "[ZURÜCK]"
+#define LOCALE_BACK_4 "[背部]"
+#define LOCALE_BACK_5 "[背部]"
+#define LOCALE_BACK_6 "[ESPALDA]"
+#define LOCALE_BACK_7 "[ESPALDA]"
+#define LOCALE_BACK_8 "[НАЗАД]"
+
+#define LOCALE_GOLD_0 " Gold."
+#define LOCALE_GOLD_1 " 골드."
+#define LOCALE_GOLD_2 " L' or."
+#define LOCALE_GOLD_3 " Gold."
+#define LOCALE_GOLD_4 " 金."
+#define LOCALE_GOLD_5 " 金."
+#define LOCALE_GOLD_6 " Oro."
+#define LOCALE_GOLD_7 " Oro."
+#define LOCALE_GOLD_8 " Золото."
+
+// female icons
+#define LOCALE_BES_0 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tBlood Elf Racial Trait Swap -"
+#define LOCALE_BES_1 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|t블러드 엘프 인종 특성 스왑 -"
+#define LOCALE_BES_2 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tÉchange de traits raciaux des elfes de sang -"
+#define LOCALE_BES_3 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tRassenwechsel der Blutelfen -"
+#define LOCALE_BES_4 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|t血精靈種族特質交換 -"
+#define LOCALE_BES_5 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|t血精靈種族特質交換 -"
+#define LOCALE_BES_6 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tIntercambio de rasgos raciales de elfos de sangre -"
+#define LOCALE_BES_7 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tIntercambio de rasgos raciales de elfos de sangre -"
+#define LOCALE_BES_8 "|TInterface\\icons\\Achievement_Character_Bloodelf_Female:25|tОбмен расовой особенностью эльфов крови -"
+
+// male icons
+#define LOCALE_BES_9  "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tBlood Elf Racial Trait Swap -"
+#define LOCALE_BES_10 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|t블러드 엘프 인종 특성 스왑 -"
+#define LOCALE_BES_11 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tÉchange de traits raciaux des elfes de sang -"
+#define LOCALE_BES_12 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tRassenwechsel der Blutelfen -"
+#define LOCALE_BES_13 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|t血精靈種族特質交換 -"
+#define LOCALE_BES_14 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|t血精靈種族特質交換 -"
+#define LOCALE_BES_15 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tIntercambio de rasgos raciales de elfos de sangre -"
+#define LOCALE_BES_16 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tIntercambio de rasgos raciales de elfos de sangre -"
+#define LOCALE_BES_17 "|TInterface\\icons\\Achievement_Character_Bloodelf_Male:25|tОбмен расовой особенностью эльфов крови -"
+
+// female icons
+#define LOCALE_DRS_0 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tDraenei Racial Trait Swap  -"
+#define LOCALE_DRS_1 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|t드레나이 인종 특성 스왑 -"
+#define LOCALE_DRS_2 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tÉchange de traits raciaux draeneï -"
+#define LOCALE_DRS_3 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tDraenei Rasseneigenschaftstausch -"
+#define LOCALE_DRS_4 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|t德萊尼人種特質交換 -"
+#define LOCALE_DRS_5 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|t德萊尼人種特質交換 -"
+#define LOCALE_DRS_6 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tCambio de rasgo racial Draenei -"
+#define LOCALE_DRS_7 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tCambio de rasgo racial Draenei -"
+#define LOCALE_DRS_8 "|TInterface\\icons\\Achievement_Character_Draenei_Female:25|tОбмен расовыми особенностями дренеев -"
+
+// male icons
+#define LOCALE_DRS_9 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tDraenei Racial Trait Swap  -"
+#define LOCALE_DRS_10 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|t드레나이 인종 특성 스왑 -"
+#define LOCALE_DRS_11 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tÉchange de traits raciaux draeneï -"
+#define LOCALE_DRS_12 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tDraenei Rasseneigenschaftstausch -"
+#define LOCALE_DRS_13 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|t德萊尼人種特質交換 -"
+#define LOCALE_DRS_14 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|t德萊尼人種特質交換 -"
+#define LOCALE_DRS_15 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tCambio de rasgo racial Draenei -"
+#define LOCALE_DRS_16 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tCambio de rasgo racial Draenei -"
+#define LOCALE_DRS_17 "|TInterface\\icons\\Achievement_Character_Draenei_Male:25|tОбмен расовыми особенностями дренеев -"
+
+// female icons
+#define LOCALE_DWS_0 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tDwarven Racial Trait Swap -"
+#define LOCALE_DWS_1 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|t드워프 종족 특성 전환 -"
+#define LOCALE_DWS_2 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tÉchange de traits raciaux nains -"
+#define LOCALE_DWS_3 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tTausch der Rasseneigenschaften der Zwerge -"
+#define LOCALE_DWS_4 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|t矮人種族特質交換 -"
+#define LOCALE_DWS_5 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|t矮人種族特質交換 -"
+#define LOCALE_DWS_6 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tIntercambio de rasgos raciales enanos -"
+#define LOCALE_DWS_7 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tIntercambio de rasgos raciales enanos -"
+#define LOCALE_DWS_8 "|TInterface\\icons\\Achievement_Character_Dwarf_Female:25|tОбмен расовыми особенностями гномов -"
+
+// male icons
+#define LOCALE_DWS_9 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tDwarven Racial Trait Swap -"
+#define LOCALE_DWS_10 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|t드워프 종족 특성 전환 -"
+#define LOCALE_DWS_11 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tÉchange de traits raciaux nains -"
+#define LOCALE_DWS_12 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tTausch der Rasseneigenschaften der Zwerge -"
+#define LOCALE_DWS_13 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|t矮人種族特質交換 -"
+#define LOCALE_DWS_14 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|t矮人種族特質交換 -"
+#define LOCALE_DWS_15 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tIntercambio de rasgos raciales enanos -"
+#define LOCALE_DWS_16 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tIntercambio de rasgos raciales enanos -"
+#define LOCALE_DWS_17 "|TInterface\\icons\\Achievement_Character_Dwarf_Male:25|tОбмен расовыми особенностями гномов -"
+
+// female icons
+#define LOCALE_GNS_0 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tGnome Racial Trait Swap -"
+#define LOCALE_GNS_1 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|t그놈 인종 특성 스왑 -"
+#define LOCALE_GNS_2 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tÉchange de traits raciaux de gnome -"
+#define LOCALE_GNS_3 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tTausch der Rasseneigenschaft Gnom -"
+#define LOCALE_GNS_4 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|t侏儒種族特質交換 -"
+#define LOCALE_GNS_5 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|t侏儒種族特質交換 -"
+#define LOCALE_GNS_6 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tCambio de rasgo racial de gnomo -"
+#define LOCALE_GNS_7 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tCambio de rasgo racial de gnomo -"
+#define LOCALE_GNS_8 "|TInterface\\icons\\Achievement_Character_Gnome_Female:25|tСмена расовой особенности гномов -"
+
+// male icons
+#define LOCALE_GNS_9 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tGnome Racial Trait Swap -"
+#define LOCALE_GNS_10 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|t그놈 인종 특성 스왑 -"
+#define LOCALE_GNS_11 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tÉchange de traits raciaux de gnome -"
+#define LOCALE_GNS_12 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tTausch der Rasseneigenschaft Gnom -"
+#define LOCALE_GNS_13 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|t侏儒種族特質交換 -"
+#define LOCALE_GNS_14 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|t侏儒種族特質交換 -"
+#define LOCALE_GNS_15 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tCambio de rasgo racial de gnomo -"
+#define LOCALE_GNS_16 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tCambio de rasgo racial de gnomo -"
+#define LOCALE_GNS_17 "|TInterface\\icons\\Achievement_Character_Gnome_Male:25|tСмена расовой особенности гномов -"
+
+// female icons
+#define LOCALE_HUS_0 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tHuman Racial Trait Swap -"
+#define LOCALE_HUS_1 "|TInterface\\icons\\Achievement_Character_Human_Female:25|t인간 인종 특성 교환 -"
+#define LOCALE_HUS_2 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tÉchange de traits raciaux humains -"
+#define LOCALE_HUS_3 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tAustausch von menschlichen Rassenmerkmalen -"
+#define LOCALE_HUS_4 "|TInterface\\icons\\Achievement_Character_Human_Female:25|t人類種族特質交換 -"
+#define LOCALE_HUS_5 "|TInterface\\icons\\Achievement_Character_Human_Female:25|t人類種族特質交換 -"
+#define LOCALE_HUS_6 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tIntercambio de rasgos raciales humanos -"
+#define LOCALE_HUS_7 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tIntercambio de rasgos raciales humanos -"
+#define LOCALE_HUS_8 "|TInterface\\icons\\Achievement_Character_Human_Female:25|tОбмен расовыми особенностями человека -"
+
+// male icons
+#define LOCALE_HUS_9 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tHuman Racial Trait Swap -"
+#define LOCALE_HUS_10 "|TInterface\\icons\\Achievement_Character_Human_Male:25|t인간 인종 특성 교환 -"
+#define LOCALE_HUS_11 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tÉchange de traits raciaux humains -"
+#define LOCALE_HUS_12 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tAustausch von menschlichen Rassenmerkmalen -"
+#define LOCALE_HUS_13 "|TInterface\\icons\\Achievement_Character_Human_Male:25|t人類種族特質交換 -"
+#define LOCALE_HUS_14 "|TInterface\\icons\\Achievement_Character_Human_Male:25|t人類種族特質交換 -"
+#define LOCALE_HUS_15 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tIntercambio de rasgos raciales humanos -"
+#define LOCALE_HUS_16 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tIntercambio de rasgos raciales humanos -"
+#define LOCALE_HUS_17 "|TInterface\\icons\\Achievement_Character_Human_Male:25|tОбмен расовыми особенностями человека -"
+
+// female icons
+#define LOCALE_NES_0 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tNight Elf Racial Trait Swap -"
+#define LOCALE_NES_1 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|t나이트 엘프 인종 특성 스왑 -"
+#define LOCALE_NES_2 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tÉchange de traits raciaux des elfes de la nuit -"
+#define LOCALE_NES_3 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tTausch der Nachtelfen-Rasseneigenschaft -"
+#define LOCALE_NES_4 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|t暗夜精靈種族特質交換 -"
+#define LOCALE_NES_5 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|t暗夜精靈種族特質交換 -"
+#define LOCALE_NES_6 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tCambio de rasgo racial elfo de la noche -"
+#define LOCALE_NES_7 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tCambio de rasgo racial elfo de la noche -"
+#define LOCALE_NES_8 "|TInterface\\icons\\Achievement_Character_Nightelf_Female:25|tОбмен расовыми особенностями ночных эльфов -"
+
+// male icons
+#define LOCALE_NES_9 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tNight Elf Racial Trait Swap -"
+#define LOCALE_NES_10 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|t나이트 엘프 인종 특성 스왑 -"
+#define LOCALE_NES_11 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tÉchange de traits raciaux des elfes de la nuit -"
+#define LOCALE_NES_12 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tTausch der Nachtelfen-Rasseneigenschaft -"
+#define LOCALE_NES_13 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|t暗夜精靈種族特質交換 -"
+#define LOCALE_NES_14 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|t暗夜精靈種族特質交換 -"
+#define LOCALE_NES_15 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tCambio de rasgo racial elfo de la noche -"
+#define LOCALE_NES_16 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tCambio de rasgo racial elfo de la noche -"
+#define LOCALE_NES_17 "|TInterface\\icons\\Achievement_Character_Nightelf_Male:25|tОбмен расовыми особенностями ночных эльфов -"
+
+// female icons
+#define LOCALE_ORC_0 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tOrc Racial Trait Swap -"
+#define LOCALE_ORC_1 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|t오크 종족 특성 교환 -"
+#define LOCALE_ORC_2 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tÉchange de traits raciaux orques -"
+#define LOCALE_ORC_3 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tAustausch der Ork-Rassenmerkmale -"
+#define LOCALE_ORC_4 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|t獸人種族特質交換 -"
+#define LOCALE_ORC_5 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|t獸人種族特質交換 -"
+#define LOCALE_ORC_6 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tIntercambio de rasgos raciales de orcos -"
+#define LOCALE_ORC_7 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tIntercambio de rasgos raciales de orcos -"
+#define LOCALE_ORC_8 "|TInterface\\icons\\Achievement_Character_Orc_Female:25|tСмена расовой особенности орков -"
+
+// male icons
+#define LOCALE_ORC_9 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tOrc Racial Trait Swap -"
+#define LOCALE_ORC_10 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|t오크 종족 특성 교환 -"
+#define LOCALE_ORC_11 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tÉchange de traits raciaux orques -"
+#define LOCALE_ORC_12 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tAustausch der Ork-Rassenmerkmale -"
+#define LOCALE_ORC_13 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|t獸人種族特質交換 -"
+#define LOCALE_ORC_14 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|t獸人種族特質交換 -"
+#define LOCALE_ORC_15 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tIntercambio de rasgos raciales de orcos -"
+#define LOCALE_ORC_16 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tIntercambio de rasgos raciales de orcos -"
+#define LOCALE_ORC_17 "|TInterface\\icons\\Achievement_Character_Orc_Male:25|tСмена расовой особенности орков -"
+
+// female icons
+#define LOCALE_TUR_0 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tTauren Racial Trait Swap -"
+#define LOCALE_TUR_1 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|t타우렌 인종 특성 교환 -"
+#define LOCALE_TUR_2 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tÉchange de traits raciaux Tauren -"
+#define LOCALE_TUR_3 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tTauren Rasseneigenschaftstausch -"
+#define LOCALE_TUR_4 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|t牛頭人種族特質交換 -"
+#define LOCALE_TUR_5 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|t牛頭人種族特質交換 -"
+#define LOCALE_TUR_6 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tIntercambio de rasgos raciales tauren -"
+#define LOCALE_TUR_7 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tIntercambio de rasgos raciales tauren -"
+#define LOCALE_TUR_8 "|TInterface\\icons\\Achievement_Character_Tauren_Female:25|tОбмен расовыми особенностями тауренов -"
+
+// male icons
+#define LOCALE_TUR_9 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tTauren Racial Trait Swap -"
+#define LOCALE_TUR_10 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|t타우렌 인종 특성 교환 -"
+#define LOCALE_TUR_11 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tÉchange de traits raciaux Tauren -"
+#define LOCALE_TUR_12 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tTauren Rasseneigenschaftstausch -"
+#define LOCALE_TUR_13 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|t牛頭人種族特質交換 -"
+#define LOCALE_TUR_14 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|t牛頭人種族特質交換 -"
+#define LOCALE_TUR_15 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tIntercambio de rasgos raciales tauren -"
+#define LOCALE_TUR_16 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tIntercambio de rasgos raciales tauren -"
+#define LOCALE_TUR_17 "|TInterface\\icons\\Achievement_Character_Tauren_Male:25|tОбмен расовыми особенностями тауренов -"
+
+// female icons
+#define LOCALE_TRL_0 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tTroll Racial Trait Swap -"
+#define LOCALE_TRL_1 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|t트롤 인종 특성 교환 -"
+#define LOCALE_TRL_2 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tÉchange de traits raciaux de troll -"
+#define LOCALE_TRL_3 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tTroll-Rasseneigenschaftstausch -"
+#define LOCALE_TRL_4 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|t巨魔種族特質交換 -"
+#define LOCALE_TRL_5 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|t巨魔種族特質交換 -"
+#define LOCALE_TRL_6 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tCambio de rasgo racial de trol -"
+#define LOCALE_TRL_7 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tCambio de rasgo racial de trol -"
+#define LOCALE_TRL_8 "|TInterface\\icons\\Achievement_Character_Troll_Female:25|tОбмен расовой особенности троллей -"
+
+// male icons
+#define LOCALE_TRL_9 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tTroll Racial Trait Swap -"
+#define LOCALE_TRL_10 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|t트롤 인종 특성 교환 -"
+#define LOCALE_TRL_11 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tÉchange de traits raciaux de troll -"
+#define LOCALE_TRL_12 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tTroll-Rasseneigenschaftstausch -"
+#define LOCALE_TRL_13 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|t巨魔種族特質交換 -"
+#define LOCALE_TRL_14 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|t巨魔種族特質交換 -"
+#define LOCALE_TRL_15 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tCambio de rasgo racial de trol -"
+#define LOCALE_TRL_16 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tCambio de rasgo racial de trol -"
+#define LOCALE_TRL_17 "|TInterface\\icons\\Achievement_Character_Troll_Male:25|tОбмен расовой особенности троллей -"
+
+// female icons
+#define LOCALE_UND_0 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tUndead Racial Trait Swap -"
+#define LOCALE_UND_1 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|t언데드 인종 특성 스왑 -"
+#define LOCALE_UND_2 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tÉchange de traits raciaux morts-vivants -"
+#define LOCALE_UND_3 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tUntoter Rassenmerkmalentausch -"
+#define LOCALE_UND_4 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|t亡靈種族特質交換 -"
+#define LOCALE_UND_5 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|t亡靈種族特質交換 -"
+#define LOCALE_UND_6 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tIntercambio de rasgos raciales no muertos -"
+#define LOCALE_UND_7 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tIntercambio de rasgos raciales no muertos -"
+#define LOCALE_UND_8 "|TInterface\\icons\\Achievement_Character_Undead_Female:25|tСмена расовой особенности нежити -"
+
+// male icons
+#define LOCALE_UND_9 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tUndead Racial Trait Swap -"
+#define LOCALE_UND_10 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|t언데드 인종 특성 스왑 -"
+#define LOCALE_UND_11 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tÉchange de traits raciaux morts-vivants -"
+#define LOCALE_UND_12 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tUntoter Rassenmerkmalentausch -"
+#define LOCALE_UND_13 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|t亡靈種族特質交換 -"
+#define LOCALE_UND_14 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|t亡靈種族特質交換 -"
+#define LOCALE_UND_15 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tIntercambio de rasgos raciales no muertos -"
+#define LOCALE_UND_16 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tIntercambio de rasgos raciales no muertos -"
+#define LOCALE_UND_17 "|TInterface\\icons\\Achievement_Character_Undead_Male:25|tСмена расовой особенности нежити -"
+
+// New Function - remove all existing racials
+void RemoveAllRacials(Player* player)
+{
+    // Draenei:
+    player->removeSpell(28875, SPEC_MASK_ALL, false); // unlearn Gemcutting
+    player->removeSpell(6562, SPEC_MASK_ALL, false);  // unlearn Heroic Presence (Warrior, Paladin, Hunter, DK)
+    player->removeSpell(28878, SPEC_MASK_ALL, false); // unlearn Heroic Presence (Priest, Shaman)
+    player->removeSpell(28880, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (Warrior, increased by AP)
+    player->removeSpell(59542, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (Paladin, increase by AP or SP, whichever is higher)
+    player->removeSpell(59543, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (Hunter, increase by AP)
+    player->removeSpell(59544, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (Priest, increase by SP)
+    player->removeSpell(59545, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (DK, increased by AP)
+    player->removeSpell(59547, SPEC_MASK_ALL, false); // unlearn Gift of Narru (Shaman, increase by AP or SP, whichever is higher)
+    player->removeSpell(59548, SPEC_MASK_ALL, false); // unlearn Gift of Naaru (Mage, increase by SP)
+    player->removeSpell(59221, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Warrior)
+    player->removeSpell(59535, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Paladin)
+    player->removeSpell(59536, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Hunter)
+    player->removeSpell(59538, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Priest)
+    player->removeSpell(59539, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (DK)
+    player->removeSpell(59540, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Shaman)
+    player->removeSpell(59541, SPEC_MASK_ALL, false); // unlearn Shadow Resistance (Mage)
+
+    // Dwarf:
+    player->removeSpell(2481, SPEC_MASK_ALL, false);  // unlearn Find Treasure
+    player->removeSpell(20596, SPEC_MASK_ALL, false); // unlearn Frost Resistance
+    player->removeSpell(20595, SPEC_MASK_ALL, false); // unlearn Gun Specialization
+    player->removeSpell(59224, SPEC_MASK_ALL, false); // unlearn Mace Specialization
+    player->removeSpell(20594, SPEC_MASK_ALL, false); // unlearn Stoneform
+
+    // Gnome:
+    player->removeSpell(20592, SPEC_MASK_ALL, false); // unlearn Arcane Resistance
+    player->removeSpell(20593, SPEC_MASK_ALL, false); // unlearn Engineering Specialization
+    player->removeSpell(20589, SPEC_MASK_ALL, false); // unlearn Escape Artist
+    player->removeSpell(20591, SPEC_MASK_ALL, false); // unlearn Expansive Mind
+
+    // Human:
+    player->removeSpell(20599, SPEC_MASK_ALL, false); // unlearn Diplomacy
+    player->removeSpell(59752, SPEC_MASK_ALL, false); // unlearn Every man for himself
+    player->removeSpell(20864, SPEC_MASK_ALL, false); // unlearn Mace Specialization
+    player->removeSpell(58985, SPEC_MASK_ALL, false); // unlearn Perception
+    player->removeSpell(20597, SPEC_MASK_ALL, false); // unlearn Sword Specialization
+    player->removeSpell(20598, SPEC_MASK_ALL, false); // unlearn The Human Spirit
+
+    // Night Elf:
+    player->removeSpell(20583, SPEC_MASK_ALL, false); // unlearn Nature Resistance
+    player->removeSpell(20582, SPEC_MASK_ALL, false); // unlearn Quickness
+    player->removeSpell(58984, SPEC_MASK_ALL, false); // unlearn Shadowmeld
+    player->removeSpell(20585, SPEC_MASK_ALL, false); // unlearn Wisp Spirit
+    player->removeSpell(21009, SPEC_MASK_ALL, false); // unlearn Elusiveness
+
+    // Orc:
+    player->removeSpell(20574, SPEC_MASK_ALL, false); // unlearn Axe Specialization
+    player->removeSpell(20573, SPEC_MASK_ALL, false); // unlearn Hardiness
+    player->removeSpell(54562, SPEC_MASK_ALL, false); // unlearn Command (DK)
+    player->removeSpell(20576, SPEC_MASK_ALL, false); // unlearn Command (Hunter)
+    player->removeSpell(65222, SPEC_MASK_ALL, false); // unlearn Command (Shaman)
+    player->removeSpell(20575, SPEC_MASK_ALL, false); // unlearn Command (Warlock)
+    player->removeSpell(21563, SPEC_MASK_ALL, false); // unlearn Command (non-pet class)
+    player->removeSpell(20572, SPEC_MASK_ALL, false); // unlearn Blood Fury (AP only)
+    player->removeSpell(33697, SPEC_MASK_ALL, false); // unlearn Blood fury (AP + SP)
+    player->removeSpell(33702, SPEC_MASK_ALL, false); // unlearn Blood Fury (SP only)
+
+    // Tauren:
+    player->removeSpell(20552, SPEC_MASK_ALL, false); // unlearn Cultivation
+    player->removeSpell(20550, SPEC_MASK_ALL, false); // unlearn Endurance
+    player->removeSpell(20551, SPEC_MASK_ALL, false); // unlearn Nature Resistance
+    player->removeSpell(20549, SPEC_MASK_ALL, false); // unlearn Warstomp
+
+    // Troll:
+    player->removeSpell(20557, SPEC_MASK_ALL, false); // unlearn Beast Slaying
+    player->removeSpell(26297, SPEC_MASK_ALL, false); // unlearn Berserking
+    player->removeSpell(26290, SPEC_MASK_ALL, false); // unlearn Bow Specialization
+    player->removeSpell(20558, SPEC_MASK_ALL, false); // unlearn Throwing Specialization
+    player->removeSpell(58943, SPEC_MASK_ALL, false); // unlearn Da Voodoo Shuffle
+    player->removeSpell(20555, SPEC_MASK_ALL, false); // unlearn Regeneration
+
+    // Undead:
+    player->removeSpell(20577, SPEC_MASK_ALL, false); // unlearn Cannibalize
+    player->removeSpell(20579, SPEC_MASK_ALL, false); // unlearn Shadow Resistance
+    player->removeSpell(5227, SPEC_MASK_ALL, false);  // unlearn Underwater Breating
+    player->removeSpell(7744, SPEC_MASK_ALL, false);  // unlearn Will of the Forsaken
+
+    // Blood Elf:
+    player->removeSpell(28877, SPEC_MASK_ALL, false); // unlearn Arcane Affinity
+    player->removeSpell(28730, SPEC_MASK_ALL, false); // unlearn Arcane Torrent (mana)
+    player->removeSpell(25046, SPEC_MASK_ALL, false); // unlearn Arcane Torrent (energy)
+    player->removeSpell(50613, SPEC_MASK_ALL, false); // unlearn Arcane Torrent (runic power)
+    player->removeSpell(822, SPEC_MASK_ALL, false);   // unlearn Magic Resistance
+}
+
+// New Function - return the current swap count for the given account
+uint32 GetRacialSwapCount(uint32 accountId)
+{
+    QueryResult result = WorldDatabase.Query("SELECT `SwapCount` FROM `mod_racial_swap_count` WHERE `AccountID` = {}", accountId);
+    if (!result)
+        return 0;
+
+    return (*result)[0].Get<uint32>();
+}
+
+// New Function - increment (or initialize) the swap counter for the given account
+void IncrementRacialSwapCount(uint32 accountId)
+{
+    WorldDatabase.Execute(
+        "INSERT INTO `mod_racial_swap_count` (`AccountID`, `SwapCount`) VALUES ({}, 1) "
+        "ON DUPLICATE KEY UPDATE `SwapCount` = `SwapCount` + 1",
+        accountId);
+}
+
+// New Function - send the "limit reached" warning to the player and abort the gossip action
+void NotifyRacialSwapLimitReached(Player* player)
+{
+    int32 const maxSwaps = sConfigMgr->GetOption<int32>("Racial.Traits.Swap.MaxPerAccount", 5);
+    ChatHandler(player->GetSession()).PSendSysMessage(
+        "|cffff0000[Racial Trait Swap]|r You have reached the maximum number of racial trait swaps ({}) allowed per account.",
+        maxSwaps);
+    CloseGossipMenuFor(player);
+}
+
+// New Function - check whether the player may perform another swap; returns true when allowed
+bool CanPerformRacialSwap(Player* player)
+{
+    int32 const maxSwaps = sConfigMgr->GetOption<int32>("Racial.Traits.Swap.MaxPerAccount", 5);
+
+    // 0 (or negative) means the limit is disabled
+    if (maxSwaps <= 0)
+        return true;
+
+    uint32 const accountId = player->GetSession()->GetAccountId();
+    uint32 const currentCount = GetRacialSwapCount(accountId);
+    return currentCount < static_cast<uint32>(maxSwaps);
+}
+
+// Valid race/class pairs come from playercreateinfo (same source as character creation).
+bool IsValidRaceClassCombination(uint8 raceId, uint8 classId)
+{
+    return sObjectMgr->GetPlayerInfo(raceId, classId) != nullptr;
+}
+
+uint8 GetRaceForGossipAction(uint32 action)
+{
+    switch (action)
+    {
+        case 1:
+        case 112:
+            return RACE_BLOODELF;
+        case 2:
+        case 212:
+            return RACE_DRAENEI;
+        case 3:
+        case 31:
+            return RACE_DWARF;
+        case 4:
+        case 41:
+            return RACE_GNOME;
+        case 5:
+        case 51:
+            return RACE_HUMAN;
+        case 6:
+        case 61:
+            return RACE_NIGHTELF;
+        case 7:
+        case 71:
+            return RACE_ORC;
+        case 8:
+        case 81:
+            return RACE_TAUREN;
+        case 9:
+        case 91:
+            return RACE_TROLL;
+        case 10:
+        case 101:
+            return RACE_UNDEAD_PLAYER;
+        default:
+            return RACE_NONE;
+    }
+}
+
+void AddRacialGossipOption(Player* player, std::string const& message, uint8 raceId, uint32 action)
+{
+    if (!IsValidRaceClassCombination(raceId, player->getClass()))
+        return;
+
+    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, message, GOSSIP_SENDER_MAIN, action);
+}
+
+void NotifyInvalidRaceClassCombination(Player* player)
+{
+    ChatHandler(player->GetSession()).PSendSysMessage(
+        "|cffff0000[Racial Trait Swap]|r Your class cannot use that race's traits.");
+    CloseGossipMenuFor(player);
+}
+
+class Azerothcore_Race_Trait_announce : public PlayerScript
+{
+public:
+    Azerothcore_Race_Trait_announce() : PlayerScript("Azerothcore_Race_Trait_announce", {
+        PLAYERHOOK_ON_LOGIN
+    }) { }
+
+    void OnPlayerLogin(Player* Player)
+    {
+        if (sConfigMgr->GetOption<bool>("Azerothcore.Racial.Trait.Swap.Announce.enable", true))
+            ChatHandler(Player->GetSession()).SendSysMessage("This server is running the |cff4CFF00Azerothcore Racial Trait Swap NPC |rmodule.");
+    }
+};
+
+class npc_race_trait_swap : public CreatureScript
+{
+public:
+    npc_race_trait_swap() : CreatureScript("npc_race_trait_swap") { }
+
+    bool OnGossipHello(Player* player, Creature* creature) override
+    {
+        char const* localizedEntry;
+        switch (player->GetSession()->GetSessionDbcLocale())
+        {
+            case LOCALE_koKR:
+                localizedEntry = LOCALE_RACESWAP_1;
+                break;
+            case LOCALE_frFR:
+                localizedEntry = LOCALE_RACESWAP_2;
+                break;
+            case LOCALE_deDE:
+                localizedEntry = LOCALE_RACESWAP_3;
+                break;
+            case LOCALE_zhCN:
+                localizedEntry = LOCALE_RACESWAP_4;
+                break;
+            case LOCALE_zhTW:
+                localizedEntry = LOCALE_RACESWAP_5;
+                break;
+            case LOCALE_esES:
+                localizedEntry = LOCALE_RACESWAP_6;
+                break;
+            case LOCALE_esMX:
+                localizedEntry = LOCALE_RACESWAP_7;
+                break;
+            case LOCALE_ruRU:
+                localizedEntry = LOCALE_RACESWAP_8;
+                break;
+            case LOCALE_enUS:
+            default:
+                localizedEntry = LOCALE_RACESWAP_0;
+        }
+        AddGossipItemFor(player, GOSSIP_ICON_TRAINER, localizedEntry, GOSSIP_SENDER_MAIN, 11);
+        SendGossipMenuFor(player, 98888, creature->GetGUID());
+        return true;
+    }
+
+    bool OnGossipSelect(Player* player, Creature* creature, uint32 /*menuId*/, uint32 gossipListId) override
+    {
+        int32 const RTS1 = sConfigMgr->GetOption<int32>("Racial.Traits.Swap.Gold", 100);
+
+        char const* localizedExit = {};
+        char const* localizedBack = {};
+        char const* localizedGold = {};
+        char const* localizedBES = {};
+        char const* localizedDRS = {};
+        char const* localizedDWS = {};
+        char const* localizedGNS = {};
+        char const* localizedHUS = {};
+        char const* localizedNES = {};
+        char const* localizedORC = {};
+        char const* localizedTUR = {};
+        char const* localizedTRL = {};
+        char const* localizedUND = {};
+
+        switch (player->GetSession()->GetSessionDbcLocale())
+        {
+            case LOCALE_koKR:
+                localizedExit = LOCALE_EXIT_1;
+                localizedBack = LOCALE_BACK_1;
+                localizedGold = LOCALE_GOLD_1;
+                break;
+            case LOCALE_frFR:
+                localizedExit = LOCALE_EXIT_2;
+                localizedBack = LOCALE_BACK_2;
+                localizedGold = LOCALE_GOLD_2;
+                break;
+            case LOCALE_deDE:
+                localizedExit = LOCALE_EXIT_3;
+                localizedBack = LOCALE_BACK_3;
+                localizedGold = LOCALE_GOLD_3;
+                break;
+            case LOCALE_zhCN:
+                localizedExit = LOCALE_EXIT_4;
+                localizedBack = LOCALE_BACK_4;
+                localizedGold = LOCALE_GOLD_4;
+                break;
+            case LOCALE_zhTW:
+                localizedExit = LOCALE_EXIT_5;
+                localizedBack = LOCALE_BACK_5;
+                localizedGold = LOCALE_GOLD_5;
+                break;
+            case LOCALE_esES:
+                localizedExit = LOCALE_EXIT_6;
+                localizedBack = LOCALE_BACK_6;
+                localizedGold = LOCALE_GOLD_6;
+                break;
+            case LOCALE_esMX:
+                localizedExit = LOCALE_EXIT_7;
+                localizedBack = LOCALE_BACK_7;
+                localizedGold = LOCALE_GOLD_7;
+                break;
+            case LOCALE_ruRU:
+                localizedExit = LOCALE_EXIT_8;
+                localizedBack = LOCALE_BACK_8;
+                localizedGold = LOCALE_GOLD_8;
+                break;
+            case LOCALE_enUS:
+            default:
+                localizedExit = LOCALE_EXIT_0;
+                localizedBack = LOCALE_BACK_0;
+                localizedGold = LOCALE_GOLD_0;
+        }
+
+        if (player->getGender() == GENDER_FEMALE)
+        {
+            switch (player->GetSession()->GetSessionDbcLocale())
+            {
+                case LOCALE_koKR:
+                    localizedBES = LOCALE_BES_1;
+                    localizedDRS = LOCALE_DRS_1;
+                    localizedDWS = LOCALE_DWS_1;
+                    localizedGNS = LOCALE_GNS_1;
+                    localizedHUS = LOCALE_HUS_1;
+                    localizedNES = LOCALE_NES_1;
+                    localizedORC = LOCALE_ORC_1;
+                    localizedTUR = LOCALE_TUR_1;
+                    localizedTRL = LOCALE_TRL_1;
+                    localizedUND = LOCALE_UND_1;
+                    break;
+                case LOCALE_frFR:
+                    localizedBES = LOCALE_BES_2;
+                    localizedDRS = LOCALE_DRS_2;
+                    localizedDWS = LOCALE_DWS_2;
+                    localizedGNS = LOCALE_GNS_2;
+                    localizedHUS = LOCALE_HUS_2;
+                    localizedNES = LOCALE_NES_2;
+                    localizedORC = LOCALE_ORC_2;
+                    localizedTUR = LOCALE_TUR_2;
+                    localizedTRL = LOCALE_TRL_2;
+                    localizedUND = LOCALE_UND_2;
+                    break;
+                case LOCALE_deDE:
+                    localizedBES = LOCALE_BES_3;
+                    localizedDRS = LOCALE_DRS_3;
+                    localizedDWS = LOCALE_DWS_3;
+                    localizedGNS = LOCALE_GNS_3;
+                    localizedHUS = LOCALE_HUS_3;
+                    localizedNES = LOCALE_NES_3;
+                    localizedORC = LOCALE_ORC_3;
+                    localizedTUR = LOCALE_TUR_3;
+                    localizedTRL = LOCALE_TRL_3;
+                    localizedUND = LOCALE_UND_3;
+                    break;
+                case LOCALE_zhCN:
+                    localizedBES = LOCALE_BES_4;
+                    localizedDRS = LOCALE_DRS_4;
+                    localizedDWS = LOCALE_DWS_4;
+                    localizedGNS = LOCALE_GNS_4;
+                    localizedHUS = LOCALE_HUS_4;
+                    localizedNES = LOCALE_NES_4;
+                    localizedORC = LOCALE_ORC_4;
+                    localizedTUR = LOCALE_TUR_4;
+                    localizedTRL = LOCALE_TRL_4;
+                    localizedUND = LOCALE_UND_4;
+                    break;
+                case LOCALE_zhTW:
+                    localizedBES = LOCALE_BES_5;
+                    localizedDRS = LOCALE_DRS_5;
+                    localizedDWS = LOCALE_DWS_5;
+                    localizedGNS = LOCALE_GNS_5;
+                    localizedHUS = LOCALE_HUS_5;
+                    localizedNES = LOCALE_NES_5;
+                    localizedORC = LOCALE_ORC_5;
+                    localizedTUR = LOCALE_TUR_5;
+                    localizedTRL = LOCALE_TRL_5;
+                    localizedUND = LOCALE_UND_5;
+                    break;
+                case LOCALE_esES:
+                    localizedBES = LOCALE_BES_6;
+                    localizedDRS = LOCALE_DRS_6;
+                    localizedDWS = LOCALE_DWS_6;
+                    localizedGNS = LOCALE_GNS_6;
+                    localizedHUS = LOCALE_HUS_6;
+                    localizedNES = LOCALE_NES_6;
+                    localizedORC = LOCALE_ORC_6;
+                    localizedTUR = LOCALE_TUR_6;
+                    localizedTRL = LOCALE_TRL_6;
+                    localizedUND = LOCALE_UND_6;
+                    break;
+                case LOCALE_esMX:
+                    localizedBES = LOCALE_BES_7;
+                    localizedDRS = LOCALE_DRS_7;
+                    localizedDWS = LOCALE_DWS_7;
+                    localizedGNS = LOCALE_GNS_7;
+                    localizedHUS = LOCALE_HUS_7;
+                    localizedNES = LOCALE_NES_7;
+                    localizedORC = LOCALE_ORC_7;
+                    localizedTUR = LOCALE_TUR_7;
+                    localizedTRL = LOCALE_TRL_7;
+                    localizedUND = LOCALE_UND_7;
+                    break;
+                case LOCALE_ruRU:
+                    localizedBES = LOCALE_BES_8;
+                    localizedDRS = LOCALE_DRS_8;
+                    localizedDWS = LOCALE_DWS_8;
+                    localizedGNS = LOCALE_GNS_8;
+                    localizedHUS = LOCALE_HUS_8;
+                    localizedNES = LOCALE_NES_8;
+                    localizedORC = LOCALE_ORC_8;
+                    localizedTUR = LOCALE_TUR_8;
+                    localizedTRL = LOCALE_TRL_8;
+                    localizedUND = LOCALE_UND_8;
+                    break;
+                case LOCALE_enUS:
+                default:
+                    localizedBES = LOCALE_BES_0;
+                    localizedDRS = LOCALE_DRS_0;
+                    localizedDWS = LOCALE_DWS_0;
+                    localizedGNS = LOCALE_GNS_0;
+                    localizedHUS = LOCALE_HUS_0;
+                    localizedNES = LOCALE_NES_0;
+                    localizedORC = LOCALE_ORC_0;
+                    localizedTUR = LOCALE_TUR_0;
+                    localizedTRL = LOCALE_TRL_0;
+                    localizedUND = LOCALE_UND_0;
+            }
+        }
+        else if (player->getGender() == GENDER_MALE)
+        {
+            switch (player->GetSession()->GetSessionDbcLocale())
+            {
+                case LOCALE_koKR:
+                    localizedBES = LOCALE_BES_10;
+                    localizedDRS = LOCALE_DRS_10;
+                    localizedDWS = LOCALE_DWS_10;
+                    localizedGNS = LOCALE_GNS_10;
+                    localizedHUS = LOCALE_HUS_10;
+                    localizedNES = LOCALE_NES_10;
+                    localizedORC = LOCALE_ORC_10;
+                    localizedTUR = LOCALE_TUR_10;
+                    localizedTRL = LOCALE_TRL_10;
+                    localizedUND = LOCALE_UND_10;
+                    break;
+                case LOCALE_frFR:
+                    localizedBES = LOCALE_BES_11;
+                    localizedDRS = LOCALE_DRS_11;
+                    localizedDWS = LOCALE_DWS_11;
+                    localizedGNS = LOCALE_GNS_11;
+                    localizedHUS = LOCALE_HUS_11;
+                    localizedNES = LOCALE_NES_11;
+                    localizedORC = LOCALE_ORC_11;
+                    localizedTUR = LOCALE_TUR_11;
+                    localizedTRL = LOCALE_TRL_11;
+                    localizedUND = LOCALE_UND_11;
+                    break;
+                case LOCALE_deDE:
+                    localizedBES = LOCALE_BES_12;
+                    localizedDRS = LOCALE_DRS_12;
+                    localizedDWS = LOCALE_DWS_12;
+                    localizedGNS = LOCALE_GNS_12;
+                    localizedHUS = LOCALE_HUS_12;
+                    localizedNES = LOCALE_NES_12;
+                    localizedORC = LOCALE_ORC_12;
+                    localizedTUR = LOCALE_TUR_12;
+                    localizedTRL = LOCALE_TRL_12;
+                    localizedUND = LOCALE_UND_12;
+                    break;
+                case LOCALE_zhCN:
+                    localizedBES = LOCALE_BES_13;
+                    localizedDRS = LOCALE_DRS_13;
+                    localizedDWS = LOCALE_DWS_13;
+                    localizedGNS = LOCALE_GNS_13;
+                    localizedHUS = LOCALE_HUS_13;
+                    localizedNES = LOCALE_NES_13;
+                    localizedORC = LOCALE_ORC_13;
+                    localizedTUR = LOCALE_TUR_13;
+                    localizedTRL = LOCALE_TRL_13;
+                    localizedUND = LOCALE_UND_13;
+                    break;
+                case LOCALE_zhTW:
+                    localizedBES = LOCALE_BES_14;
+                    localizedDRS = LOCALE_DRS_14;
+                    localizedDWS = LOCALE_DWS_14;
+                    localizedGNS = LOCALE_GNS_14;
+                    localizedHUS = LOCALE_HUS_14;
+                    localizedNES = LOCALE_NES_14;
+                    localizedORC = LOCALE_ORC_14;
+                    localizedTUR = LOCALE_TUR_14;
+                    localizedTRL = LOCALE_TRL_14;
+                    localizedUND = LOCALE_UND_14;
+                    break;
+                case LOCALE_esES:
+                    localizedBES = LOCALE_BES_15;
+                    localizedDRS = LOCALE_DRS_15;
+                    localizedDWS = LOCALE_DWS_15;
+                    localizedGNS = LOCALE_GNS_15;
+                    localizedHUS = LOCALE_HUS_15;
+                    localizedNES = LOCALE_NES_15;
+                    localizedORC = LOCALE_ORC_15;
+                    localizedTUR = LOCALE_TUR_15;
+                    localizedTRL = LOCALE_TRL_15;
+                    localizedUND = LOCALE_UND_15;
+                    break;
+                case LOCALE_esMX:
+                    localizedBES = LOCALE_BES_16;
+                    localizedDRS = LOCALE_DRS_16;
+                    localizedDWS = LOCALE_DWS_16;
+                    localizedGNS = LOCALE_GNS_16;
+                    localizedHUS = LOCALE_HUS_16;
+                    localizedNES = LOCALE_NES_16;
+                    localizedORC = LOCALE_ORC_16;
+                    localizedTUR = LOCALE_TUR_16;
+                    localizedTRL = LOCALE_TRL_16;
+                    localizedUND = LOCALE_UND_16;
+                    break;
+                case LOCALE_ruRU:
+                    localizedBES = LOCALE_BES_17;
+                    localizedDRS = LOCALE_DRS_17;
+                    localizedDWS = LOCALE_DWS_17;
+                    localizedGNS = LOCALE_GNS_17;
+                    localizedHUS = LOCALE_HUS_17;
+                    localizedNES = LOCALE_NES_17;
+                    localizedORC = LOCALE_ORC_17;
+                    localizedTUR = LOCALE_TUR_17;
+                    localizedTRL = LOCALE_TRL_17;
+                    localizedUND = LOCALE_UND_17;
+                    break;
+                case LOCALE_enUS:
+                default:
+                    localizedBES = LOCALE_BES_9;
+                    localizedDRS = LOCALE_DRS_9;
+                    localizedDWS = LOCALE_DWS_9;
+                    localizedGNS = LOCALE_GNS_9;
+                    localizedHUS = LOCALE_HUS_9;
+                    localizedNES = LOCALE_NES_9;
+                    localizedORC = LOCALE_ORC_9;
+                    localizedTUR = LOCALE_TUR_9;
+                    localizedTRL = LOCALE_TRL_9;
+                    localizedUND = LOCALE_UND_9;
+            }
+        }
+
+        std::ostringstream messageBE;
+        messageBE << localizedBES << RTS1 << localizedGold;
+        std::ostringstream messageDR;
+        messageDR << localizedDRS << RTS1 << localizedGold;
+        std::ostringstream messageDW;
+        messageDW << localizedDWS << RTS1 << localizedGold;
+        std::ostringstream messageGN;
+        messageGN << localizedGNS << RTS1 << localizedGold;
+        std::ostringstream messageHU;
+        messageHU << localizedHUS << RTS1 << localizedGold;
+        std::ostringstream messageNE;
+        messageNE << localizedNES << RTS1 << localizedGold;
+        std::ostringstream messageOR;
+        messageOR << localizedORC << RTS1 << localizedGold;
+        std::ostringstream messageTA;
+        messageTA << localizedTUR << RTS1 << localizedGold;
+        std::ostringstream messageTR;
+        messageTR << localizedTRL << RTS1 << localizedGold;
+        std::ostringstream messageUN;
+        messageUN << localizedUND << RTS1 << localizedGold;
+
+        ClearGossipMenuFor(player);
+
+        uint8 const requestedRace = GetRaceForGossipAction(gossipListId);
+        if (requestedRace != RACE_NONE && !IsValidRaceClassCombination(requestedRace, player->getClass()))
+        {
+            NotifyInvalidRaceClassCombination(player);
+            return true;
+        }
+
+        switch (gossipListId)
+        {
+            case 11:
+                if (player)
+                {
+                    AddRacialGossipOption(player, messageBE.str(), RACE_BLOODELF, 1);
+                    AddRacialGossipOption(player, messageDR.str(), RACE_DRAENEI, 2);
+                    AddRacialGossipOption(player, messageDW.str(), RACE_DWARF, 3);
+                    AddRacialGossipOption(player, messageGN.str(), RACE_GNOME, 4);
+                    AddRacialGossipOption(player, messageHU.str(), RACE_HUMAN, 5);
+                    AddRacialGossipOption(player, messageNE.str(), RACE_NIGHTELF, 6);
+                    AddRacialGossipOption(player, messageOR.str(), RACE_ORC, 7);
+                    AddRacialGossipOption(player, messageTA.str(), RACE_TAUREN, 8);
+                    AddRacialGossipOption(player, messageTR.str(), RACE_TROLL, 9);
+                    AddRacialGossipOption(player, messageUN.str(), RACE_UNDEAD_PLAYER, 10);
+                    AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                    SendGossipMenuFor(player, 98888, creature->GetGUID());
+                }
+                break;
+
+            case 1111: // close
+                CloseGossipMenuFor(player);
+                break;
+
+            case 1: // Blood Elf Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Pride of the Blood Elves", GOSSIP_SENDER_MAIN, 112);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988881, creature->GetGUID());
+                break;
+
+            case 112: // Blood Elf
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(28877, false); // Arcane Affinity
+                player->learnSpell(822, false); // Magic Resistance
+                // Arcane Torrent
+                // NOTE: Druid will get 2 versions of Arcane Torrent since they can use both Energy and Mana. If the custom version of Arcane Torrent is added, the druid will also need to pick that up.
+                switch (player->getClass())
+                {
+                    case CLASS_DEATH_KNIGHT:
+                    case CLASS_WARRIOR:
+                        player->learnSpell(50613, false); // Arcane Torrent
+                        break;
+                    case CLASS_HUNTER:
+                    case CLASS_MAGE:
+                    case CLASS_PALADIN:
+                    case CLASS_PRIEST:
+                    case CLASS_SHAMAN:
+                    case CLASS_WARLOCK:
+                        player->learnSpell(28730, false); // Arcane Torrent (Mana)
+                        break;
+                    case CLASS_ROGUE:
+                        player->learnSpell(25046, false); // Arcane Torrent (Energy)
+                        break;
+                    case CLASS_DRUID:
+                        player->learnSpell(28730, false); // Arcane Torrent (Mana)
+                        player->learnSpell(25046, false); // Arcane Torrent (Energy)
+                        break;
+                }
+                break;
+
+            case 2: // Draenei Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Light of the Draenei", GOSSIP_SENDER_MAIN, 212);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988882, creature->GetGUID());
+                break;
+
+            case 212: // Draenei
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(28875, false); // Gem Cutting
+
+                // Heroic Presence Variants
+                switch (player->getClass())
+                {
+                    case CLASS_DEATH_KNIGHT:
+                    case CLASS_HUNTER:
+                    case CLASS_PALADIN:
+                    case CLASS_ROGUE:
+                    case CLASS_WARRIOR:
+                        player->learnSpell(6562, false); // Heroic Presence
+                        break;
+                    case CLASS_DRUID:
+                    case CLASS_MAGE:
+                    case CLASS_PRIEST:
+                    case CLASS_SHAMAN:
+                    case CLASS_WARLOCK:
+                        player->learnSpell(28878, false); // Heroic Presence
+                        break;
+                }
+
+                // Gift of Naaru + Shadow Resistance VARIANTS
+                switch (player->getClass())
+                {
+                    case CLASS_DEATH_KNIGHT:
+                        player->learnSpell(59545, false); // Gift of Naaru
+                        player->learnSpell(59539, false); // Shadow Resistance
+                        break;
+                    case CLASS_HUNTER:
+                        player->learnSpell(59543, false); // Gift of Naaru
+                        player->learnSpell(59536, false); // Shadow Resistance
+                        break;
+                    case CLASS_MAGE:
+                    case CLASS_WARLOCK:
+                        player->learnSpell(59548, false); // Gift of Naaru
+                        player->learnSpell(59541, false); // Shadow Resistance
+                        break;
+                    case CLASS_PALADIN:
+                        player->learnSpell(59542, false); // Gift of Naaru
+                        player->learnSpell(59535, false); // Shadow Resistance
+                        break;
+                    case CLASS_PRIEST:
+                        player->learnSpell(59544, false); // Gift of Naaru
+                        player->learnSpell(59538, false); // Shadow Resistance
+                        break;
+                    case CLASS_DRUID:
+                    case CLASS_SHAMAN:
+                        player->learnSpell(59547, false); // Gift of Naaru
+                        player->learnSpell(59540, false); // Shadow Resistance
+                        break;
+                    case CLASS_ROGUE:
+                    case CLASS_WARRIOR:
+                        player->learnSpell(28880, false); // Gift of Naaru
+                        player->learnSpell(59221, false); // Shadow Resistance
+                        break;
+                }
+                break;
+
+            case 3: // Dwarves Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Iron Will of the Dwarves", GOSSIP_SENDER_MAIN, 31);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988883, creature->GetGUID());
+                break;
+
+            case 31: // Dwarves
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(2481, false); // Find Treasure
+                player->learnSpell(20596, false); // Frost Resistance
+                player->learnSpell(20595, false); // Gun Specialization
+                player->learnSpell(59224, false); // Mace Specialization
+                player->learnSpell(20594, false); // Stoneform
+                break;
+
+            case 4: // Gnome Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Technological Might of the Gnomes", GOSSIP_SENDER_MAIN, 41);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988884, creature->GetGUID());
+                break;
+
+            case 41: // Gnome
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occur and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20592, false); // Arcane Resistance
+                player->learnSpell(20593, false); // Engineering Specialization
+                player->learnSpell(20589, false); // Escape Artist
+                player->learnSpell(20591, false); // Expansive Mind
+                break;
+
+            case 5: // Human Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Human Spirit", GOSSIP_SENDER_MAIN, 51);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988885, creature->GetGUID());
+                break;
+
+            case 51: // Human
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20599, false); // Diplomacy
+                player->learnSpell(59752, false); // Every man for himself
+                player->learnSpell(20864, false); // Mace Specialization
+                player->learnSpell(58985, false); // Perception
+                player->learnSpell(20597, false); // Sword Specialization
+                player->learnSpell(20598, false); // The Human Spirit
+                break;
+
+            case 6: // Night Elf Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Ancient Night Elves", GOSSIP_SENDER_MAIN, 61);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988886, creature->GetGUID());
+                break;
+
+            case 61: // Night Elf
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20583, false); // Nature Resistance
+                player->learnSpell(20582, false); // Quickness
+                player->learnSpell(58984, false); // Shadowmeld
+                player->learnSpell(20585, false); // Wisp Spirit
+                player->learnSpell(21009, false); // Elusiveness
+                break;
+
+            case 7: // Orc Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Strength of the Orc", GOSSIP_SENDER_MAIN, 71);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988887, creature->GetGUID());
+                break;
+
+            case 71: // Orc
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20574, false); // Axe Specialization
+                player->learnSpell(20573, false); // Hardiness
+                // Command
+                switch (player->getClass())
+                {
+                    case CLASS_DEATH_KNIGHT:
+                        player->learnSpell(54562, false);
+                        break;
+                    case CLASS_HUNTER:
+                        player->learnSpell(20576, false);
+                        break;
+                    case CLASS_SHAMAN:
+                        player->learnSpell(65222, false);
+                        break;
+                    case CLASS_WARLOCK:
+                        player->learnSpell(20575, false);
+                        break;
+                    // Command (Non Pet Users)
+                    default:
+                        player->learnSpell(21563, false);
+                        break;
+                }
+                // Blood Fury
+                switch (player->getClass())
+                {
+                    case CLASS_ROGUE:
+                    case CLASS_WARRIOR:
+                    case CLASS_HUNTER:
+                    case CLASS_DEATH_KNIGHT:
+                        player->learnSpell(20572, false); // Blood Fury (AP only)
+                        break;
+                    case CLASS_SHAMAN:
+                    case CLASS_DRUID:
+                    case CLASS_PALADIN:
+                        player->learnSpell(33697, false); // Blood Fury (SP + AP)
+                        break;
+                    case CLASS_MAGE:
+                    case CLASS_WARLOCK:
+                    case CLASS_PRIEST:
+                        player->learnSpell(33702, false); // Blood Fury (SP only)
+                        break;
+                }
+                break;
+
+            case 8: // Tauren Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Endurance of the Taurens", GOSSIP_SENDER_MAIN, 81);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988888, creature->GetGUID());
+                break;
+
+            case 81: // Tauren
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20552, false); // Cultivation
+                player->learnSpell(20550, false); // Endurance
+                player->learnSpell(20551, false); // Nature Resistance
+                player->learnSpell(20549, false); // Warstomp
+                break;
+
+            case 9: // Troll Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Vodoo of the Trolls", GOSSIP_SENDER_MAIN, 91);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988889, creature->GetGUID());
+                break;
+
+            case 91: // Troll
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20557, false); // Beast Slaying
+                player->learnSpell(26297, false); // Berserking
+                player->learnSpell(26290, false); // Bow Specialization
+                player->learnSpell(58943, false); // Da Voodoo Shuffle
+                player->learnSpell(20555, false); // Regeneration
+                player->learnSpell(20558, false); // Throwing Specialization
+                break;
+
+            case 10: // Undead Selection
+                AddGossipItemFor(player, GOSSIP_ICON_INTERACT_1, "Commit to the Will of the Forsaken", GOSSIP_SENDER_MAIN, 101);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedBack, GOSSIP_SENDER_MAIN, 11);
+                AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
+                SendGossipMenuFor(player, 988880, creature->GetGUID());
+                break;
+
+            case 101: // Undead
+                CloseGossipMenuFor(player);
+                if (!CanPerformRacialSwap(player))
+                {
+                    NotifyRacialSwapLimitReached(player);
+                    return true;
+                }
+                if (!player->HasEnoughMoney(RTS1 * GOLD)) // gold check
+                    return true;
+                player->ModifyMoney(-RTS1 * GOLD); // Deducting the money if check passes
+                player->CastSpell(player, 47292); // Level up visual effect to let you know the transaction did occure and money is deducted
+                RemoveAllRacials(player); // Remove all racials
+                IncrementRacialSwapCount(player->GetSession()->GetAccountId()); // Track per-account usage
+                player->learnSpell(20577, false); // Cannibalize
+                player->learnSpell(20579, false); // Shadow Resistance
+                player->learnSpell(5227, false);  // Underwater Breating
+                player->learnSpell(7744, false);  // Will of the Forsaken
+                break;
+
+            default:
+                break;
+        }
+        return true;
+    }
+};
+
+void AddSC_racial_traits_npc()
+{
+    new Azerothcore_Race_Trait_announce();
+    new npc_race_trait_swap();
+}
