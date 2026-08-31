@@ -24,7 +24,7 @@ public:
 
     void LoadConfig();
 
-    void QueueWatcher(Player* player, bool forceChecks);
+    bool QueueWatcher(Player* player, bool forceChecks);
     bool HandleDetection(Player* player);
     void ClearPlayer(ObjectGuid guid);
     void AddRequeueDiff(Player* player, uint32 diff);
@@ -39,6 +39,7 @@ private:
     uint32 _requeueMs = 60000;
 
     std::unordered_set<ObjectGuid> _pendingKicks;
+    std::unordered_set<ObjectGuid> _injected;
     std::unordered_map<ObjectGuid, uint32> _queueTimers;
 };
 

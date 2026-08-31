@@ -24,17 +24,30 @@
 
 namespace
 {
-constexpr uint16 NI_PAYLOAD_ID = 9000;
+// Warden string length is a uint8 — payloads longer than 255 bytes are truncated and never run.
+constexpr uint16 NI_PAYLOAD_HOOK_ID = 9000;
+constexpr uint16 NI_PAYLOAD_SCAN_ID = 9001;
+constexpr uint16 NI_PAYLOAD_NI_ID = 9002;
+constexpr uint32 NI_RETRY_MS = 3000;
 constexpr char const NI_DETECT_PREFIX[] = "_NI\t";
 
-// Watches for the ni / Nevermore global after Warden eval returns, then reports via addon chat.
-// Names are obfuscated so naive anti-warden string scans for "ni" do not skip the payload.
-std::string const NI_WATCHER_LUA =
-    "pcall(function() local p=PlayerFrame if p and not p.__w then p.__w=1 "
-    "local f=CreateFrame(\"Frame\",nil,p) f:SetScript(\"OnUpdate\",function(s) "
-    "local n=_G[string.char(110,105)] if type(n)==\"table\" and "
-    "(n.loaded_init or n.backend or n.rotation or n.vars) then "
-    "SendAddonMessage(\"_NI\",\"1\",\"GUILD\") s:SetScript(\"OnUpdate\",nil) end end) end end)";
+// ni-v3 never puts `ni` on _G (local upvalue + anti-warden). Activating a profile prints
+// "Primary started" (see addon/Core/components/main_window/init.lua). Hook that instead.
+constexpr char NI_HOOK_LUA[] =
+    "local f=ChatFrame1 if f and not f.__n then f.__n=1 local o=f.AddMessage "
+    "f.AddMessage=function(s,m,...) if type(m)==\"string\" and m:find(\"Primary started\") then "
+    "SendAddonMessage(\"_NI\",\"1\",\"GUILD\") end if o then return o(s,m,...) end end end";
+
+constexpr char NI_SCAN_LUA[] =
+    "local f=ChatFrame1 if f then for i=1,f:GetNumMessages() do local t=f:GetMessageInfo(i) "
+    "if t and t:find(\"Primary started\") then SendAddonMessage(\"_NI\",\"1\",\"GUILD\") break end end end";
+
+constexpr char NI_GLOBAL_LUA[] =
+    "local n=_G[string.char(110,105)] if type(n)==\"table\" then SendAddonMessage(\"_NI\",\"1\",\"GUILD\") end";
+
+static_assert(sizeof(NI_HOOK_LUA) - 1 <= 255, "Warden payload length is a uint8");
+static_assert(sizeof(NI_SCAN_LUA) - 1 <= 255, "Warden payload length is a uint8");
+static_assert(sizeof(NI_GLOBAL_LUA) - 1 <= 255, "Warden payload length is a uint8");
 
 bool IsNiDetectionMessage(std::string const& msg)
 {
@@ -71,30 +84,42 @@ void WardenNi::LoadConfig()
         _enabled ? "enabled" : "disabled", _kickDelaySeconds);
 }
 
-void WardenNi::QueueWatcher(Player* player, bool forceChecks)
+bool WardenNi::QueueWatcher(Player* player, bool forceChecks)
 {
     if (!_enabled || !player)
-        return;
+        return false;
 
     WorldSession* session = player->GetSession();
     if (!session)
-        return;
+        return false;
 
     Warden* warden = session->GetWarden();
     if (!warden || !warden->IsInitialized())
-        return;
+        return false;
 
     WardenPayloadMgr* payloadMgr = warden->GetPayloadMgr();
     if (!payloadMgr)
-        return;
+        return false;
 
-    if (!payloadMgr->GetPayloadById(NI_PAYLOAD_ID))
-        payloadMgr->RegisterPayload(NI_WATCHER_LUA, NI_PAYLOAD_ID);
-
-    payloadMgr->QueuePayload(NI_PAYLOAD_ID, true);
+    payloadMgr->RegisterPayload(NI_HOOK_LUA, NI_PAYLOAD_HOOK_ID, true);
+    payloadMgr->RegisterPayload(NI_SCAN_LUA, NI_PAYLOAD_SCAN_ID, true);
+    payloadMgr->RegisterPayload(NI_GLOBAL_LUA, NI_PAYLOAD_NI_ID, true);
+    payloadMgr->QueuePayload(NI_PAYLOAD_HOOK_ID, true);
+    payloadMgr->QueuePayload(NI_PAYLOAD_SCAN_ID, true);
+    payloadMgr->QueuePayload(NI_PAYLOAD_NI_ID, true);
 
     if (forceChecks)
         warden->ForceChecks();
+
+    _injected.insert(player->GetGUID());
+
+    if (forceChecks)
+    {
+        LOG_INFO("module.wardenni", "Queued ni watcher for {} (account {})",
+            player->GetName(), session->GetAccountId());
+    }
+
+    return true;
 }
 
 bool WardenNi::HandleDetection(Player* player)
@@ -159,21 +184,29 @@ bool WardenNi::HandleDetection(Player* player)
 void WardenNi::ClearPlayer(ObjectGuid guid)
 {
     _pendingKicks.erase(guid);
+    _injected.erase(guid);
     _queueTimers.erase(guid);
 }
 
 void WardenNi::AddRequeueDiff(Player* player, uint32 diff)
 {
-    if (!_enabled || !_requeueMs || !player)
+    if (!_enabled || !player)
         return;
 
-    uint32& timer = _queueTimers[player->GetGUID()];
+    ObjectGuid const guid = player->GetGUID();
+    bool const injected = _injected.find(guid) != _injected.end();
+    uint32 const interval = injected ? _requeueMs : NI_RETRY_MS;
+    if (!interval)
+        return;
+
+    uint32& timer = _queueTimers[guid];
     timer += diff;
-    if (timer < _requeueMs)
+    if (timer < interval)
         return;
 
     timer = 0;
-    QueueWatcher(player, false);
+    if (QueueWatcher(player, !injected))
+        _injected.insert(guid);
 }
 
 class WardenNiWorldScript : public WorldScript
@@ -197,12 +230,22 @@ public:
         PLAYERHOOK_ON_LOGOUT,
         PLAYERHOOK_ON_UPDATE,
         PLAYERHOOK_ON_BEFORE_SEND_CHAT_MESSAGE,
-        PLAYERHOOK_CAN_PLAYER_USE_GUILD_CHAT
+        PLAYERHOOK_CAN_PLAYER_USE_GUILD_CHAT,
+        PLAYERHOOK_CAN_PLAYER_USE_PRIVATE_CHAT
     }) { }
 
     void OnPlayerLogin(Player* player) override
     {
-        sWardenNi->QueueWatcher(player, true);
+        if (!player)
+            return;
+
+        ObjectGuid const guid = player->GetGUID();
+        player->m_Events.AddEventAtOffset([guid]()
+        {
+            Player* target = ObjectAccessor::FindConnectedPlayer(guid);
+            if (target)
+                sWardenNi->QueueWatcher(target, true);
+        }, 2s);
     }
 
     void OnPlayerLogout(Player* player) override
@@ -216,9 +259,9 @@ public:
         sWardenNi->AddRequeueDiff(player, diff);
     }
 
-    void OnPlayerBeforeSendChatMessage(Player* player, uint32& type, uint32& lang, std::string& msg) override
+    void OnPlayerBeforeSendChatMessage(Player* player, uint32& /*type*/, uint32& lang, std::string& msg) override
     {
-        if (type != CHAT_MSG_GUILD || lang != LANG_ADDON || !IsNiDetectionMessage(msg))
+        if (lang != LANG_ADDON || !IsNiDetectionMessage(msg))
             return;
 
         sWardenNi->HandleDetection(player);
@@ -226,6 +269,15 @@ public:
 
     bool OnPlayerCanUseChat(Player* /*player*/, uint32 /*type*/, uint32 language, std::string& msg,
         Guild* /*guild*/) override
+    {
+        if (language == LANG_ADDON && IsNiDetectionMessage(msg))
+            return false;
+
+        return true;
+    }
+
+    bool OnPlayerCanUseChat(Player* /*player*/, uint32 /*type*/, uint32 language, std::string& msg,
+        Player* /*receiver*/) override
     {
         if (language == LANG_ADDON && IsNiDetectionMessage(msg))
             return false;
