@@ -130,3 +130,5 @@ __pycache__/
 
 !/modules/mod-challenge-modes/
 !/modules/mod-challenge-modes/**
+!/modules/mod-warden-ni/
+!/modules/mod-warden-ni/**

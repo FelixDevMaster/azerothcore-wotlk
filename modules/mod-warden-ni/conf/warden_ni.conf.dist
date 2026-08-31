@@ -1,0 +1,41 @@
+#
+# Warden: ni / Nevermore loader detection
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# NI LOADER WARDEN
+#
+# Detects the ni-v3 (Nevermore Internal) Lua unlocker/rotation bot when the player activates it
+# in-game. The character may log in normally. On detection the server announces the event to GMs
+# and kicks the player after a short delay. The account is never banned.
+#
+# Requires Warden.Enabled = 1 (Windows clients).
+#
+#    NiWarden.Enable
+#        Description: Master switch for the watcher payload and delayed kick.
+#        Default:     1
+#
+#    NiWarden.KickDelaySeconds
+#        Description: Seconds to wait after detection before kicking. 0 = kick immediately.
+#        Default:     5
+#
+#    NiWarden.AnnounceGMs
+#        Description: Send a system message to online GMs when ni loader is detected.
+#        Default:     1
+#
+#    NiWarden.NotifyPlayer
+#        Description: Notify the offending player before the kick.
+#        Default:     1
+#
+#    NiWarden.RequeueSeconds
+#        Description: Re-inject the watcher payload this often so /reload ui cannot drop it.
+#                     0 disables re-injection after login.
+#        Default:     60
+#
+
+NiWarden.Enable = 1
+NiWarden.KickDelaySeconds = 5
+NiWarden.AnnounceGMs = 1
+NiWarden.NotifyPlayer = 1
+NiWarden.RequeueSeconds = 60
