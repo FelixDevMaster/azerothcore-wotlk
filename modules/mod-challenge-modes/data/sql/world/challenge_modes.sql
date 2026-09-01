@@ -11,36 +11,20 @@ DELETE FROM `gossip_menu_option` WHERE `MenuID` = 190012;
 DELETE FROM `gossip_menu` WHERE `MenuID` = 190012;
 DELETE FROM `npc_text_locale` WHERE `ID` = 190012;
 DELETE FROM `npc_text` WHERE `ID` = 190012;
-
-
-DELETE FROM `gameobject_template` WHERE `entry`=254605;
-INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`, `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`, `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`, `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES
-(254605, 2, 6925, 'Shrine of Challenge', '', '', '', 1.2, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, '', 'gobject_challenge_modes', 0);
-
-DELETE FROM `gameobject` WHERE `guid` BETWEEN 5530536 AND 5530544;
-INSERT INTO `gameobject` (`guid`, `id`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`, `position_z`, `orientation`, `rotation0`, `rotation1`, `rotation2`, `rotation3`, `spawntimesecs`, `animprogress`, `state`, `ScriptName`, `VerifiedBuild`) VALUES
-(5530536, 254605, 0, 0, 0, 1, 1, -8920.64, -178.191, 80.891, 4.3208, -0, -0, -0.83116, 0.556033, 300, 0, 1, '', 0),
-(5530537, 254605, 0, 0, 0, 1, 1, -6135.29, 336.119, 402.238, 5.55195, -0, -0, -0.357526, 0.933903, 300, 0, 1, '', 0),
-(5530538, 254605, 1, 0, 0, 1, 1, 10415.2, 809.575, 1318.19, 2.37082, -0, -0, -0.926654, -0.375916, 300, 0, 1, '', 0),
-(5530539, 254605, 530, 0, 0, 1, 1, -4147.11, -13667.7, 75.8166, 5.06421, -0, -0, -0.572447, 0.819942, 300, 0, 1, '', 0),
-(5530540, 254605, 1, 0, 0, 1, 1, -658.88, -4311.88, 45.666, 3.06225, -0, -0, -0.999213, -0.0396603, 300, 0, 1, '', 0),
-(5530541, 254605, 0, 0, 0, 1, 1, 1842.91, 1651.33, 95.6206, 1.58336, -0, -0, -0.711535, -0.702651, 300, 0, 1, '', 0),
-(5530542, 254605, 1, 0, 0, 1, 1, -2994.22, -136.321, 77.9491, 1.05411, -0, -0, -0.502992, -0.864291, 300, 0, 1, '', 0),
-(5530543, 254605, 530, 0, 0, 1, 1, 10452, -6389.91, 43.7962, 1.84851, -0, -0, -0.798173, -0.602429, 300, 0, 1, '', 0),
-(5530544, 254605, 609, 0, 0, 1, 1, 2415.84, -5649.91, 376.819, 1.87356, -0, -0, -0.805655, -0.592385, 300, 0, 1, '', 0);
+DELETE FROM `gameobject_template` WHERE `entry` = 254605;
 
 INSERT INTO `npc_text` (`ID`, `text0_0`, `text0_1`, `BroadcastTextID0`, `lang0`, `Probability0`,
     `em0_0`, `em0_1`, `em0_2`, `em0_3`, `em0_4`, `em0_5`, `VerifiedBuild`) VALUES
 (190012,
-    'The Keeper of Challenges weighs your resolve.$B$BYou may accept ONE challenge per character, and only at level 1 (or level 55 if you are a Death Knight). Once accepted it cannot be turned off.$B$BThe realm announces when you accept a mode, when a Hardcore or Iron Man champion falls, and when you finish the run at level 80.$B$BOpen Info on a mode to read the full rules. Choose carefully.',
+    'The Keeper of Challenges weighs your resolve.$B$BYou may accept a challenge only at level 1 (or level 55 if you are a Death Knight). Once accepted, a challenge cannot be turned off.$B$BChoose carefully.',
     '', 0, 0, 1, 0, 0, 0, 0, 0, 0, 12340);
 
 INSERT INTO `npc_text_locale` (`ID`, `Locale`, `Text0_0`, `Text0_1`) VALUES
 (190012, 'esES',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
     ''),
 (190012, 'esMX',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
     '');
 
 INSERT INTO `gossip_menu` (`MenuID`, `TextID`) VALUES
@@ -58,7 +42,7 @@ INSERT INTO `gossip_menu_option` (`MenuID`, `OptionID`, `OptionIcon`, `OptionTex
 (190012, 6, 0, 'Enable Quest XP Only', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
 (190012, 7, 0, 'Enable Iron Man', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340);
 
-/*INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`,
+INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`,
     `KillCredit1`, `KillCredit2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`,
     `faction`, `npcflag`, `speed_walk`, `speed_run`, `speed_swim`, `speed_flight`, `detection_range`, `rank`,
     `dmgschool`, `DamageModifier`, `BaseAttackTime`, `RangeAttackTime`, `BaseVariance`, `RangeVariance`,
@@ -77,10 +61,16 @@ INSERT INTO `creature_template_locale` (`entry`, `locale`, `Name`, `Title`, `Ver
 INSERT INTO `creature_template_model` (`CreatureID`, `Idx`, `CreatureDisplayID`, `DisplayScale`, `Probability`,
     `VerifiedBuild`) VALUES
 (190012, 0, 25344, 1, 1, 12340);
-*/
 
-/*-- Starting-area keepers (same spots as the original shrine).
-INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
+INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconName`, `castBarCaption`, `unk1`,
+    `size`, `Data0`, `Data1`, `Data2`, `Data3`, `Data4`, `Data5`, `Data6`, `Data7`, `Data8`, `Data9`, `Data10`,
+    `Data11`, `Data12`, `Data13`, `Data14`, `Data15`, `Data16`, `Data17`, `Data18`, `Data19`, `Data20`, `Data21`,
+    `Data22`, `Data23`, `AIName`, `ScriptName`, `VerifiedBuild`) VALUES
+(254605, 2, 6925, 'Shrine of Challenge', '', '', '', 1.2, 0, 0, 0, 0, 0, 0, -1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    0, 0, 0, 0, 0, '', 'gobject_challenge_modes', 0);
+
+-- Starting-area keepers (same spots as the original shrine).
+/*INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
     `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`,
     `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `ScriptName`, `VerifiedBuild`, `CreateObject`,
     `Comment`) VALUES
@@ -92,4 +82,5 @@ INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `equipmen
 (5900125, 190012, 0, 1, 1, 0, 1842.91, 1651.33, 95.6206, 1.58336, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Tirisfal'),
 (5900126, 190012, 1, 1, 1, 0, -2994.22, -136.321, 77.9491, 1.05411, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Mulgore'),
 (5900127, 190012, 530, 1, 1, 0, 10452, -6389.91, 43.7962, 1.84851, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Eversong'),
-(5900128, 190012, 609, 1, 1, 0, 2415.84, -5649.91, 376.819, 1.87356, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Ebon Hold');*/
+(5900128, 190012, 609, 1, 1, 0, 2415.84, -5649.91, 376.819, 1.87356, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Ebon Hold');
+*/
