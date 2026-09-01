@@ -34,11 +34,13 @@
 #include "GameEventMgr.h"
 #include "Item.h"
 #include "ItemEnchantmentMgr.h"
+#include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
 #include "ScriptedCreature.h"
 #include "ScriptedGossip.h"
 #include "WorldSession.h"
+#include <string>
 
 #define LOCALE_RACESWAP_0 "Racial Trait Swap"
 #define LOCALE_RACESWAP_1 "인종 특성 교환"
@@ -433,6 +435,66 @@ bool CanPerformRacialSwap(Player* player)
     return currentCount < static_cast<uint32>(maxSwaps);
 }
 
+// Valid race/class pairs come from playercreateinfo (same source as character creation).
+bool IsValidRaceClassCombination(uint8 raceId, uint8 classId)
+{
+    return sObjectMgr->GetPlayerInfo(raceId, classId) != nullptr;
+}
+
+uint8 GetRaceForGossipAction(uint32 action)
+{
+    switch (action)
+    {
+        case 1:
+        case 112:
+            return RACE_BLOODELF;
+        case 2:
+        case 212:
+            return RACE_DRAENEI;
+        case 3:
+        case 31:
+            return RACE_DWARF;
+        case 4:
+        case 41:
+            return RACE_GNOME;
+        case 5:
+        case 51:
+            return RACE_HUMAN;
+        case 6:
+        case 61:
+            return RACE_NIGHTELF;
+        case 7:
+        case 71:
+            return RACE_ORC;
+        case 8:
+        case 81:
+            return RACE_TAUREN;
+        case 9:
+        case 91:
+            return RACE_TROLL;
+        case 10:
+        case 101:
+            return RACE_UNDEAD_PLAYER;
+        default:
+            return RACE_NONE;
+    }
+}
+
+void AddRacialGossipOption(Player* player, std::string const& message, uint8 raceId, uint32 action)
+{
+    if (!IsValidRaceClassCombination(raceId, player->getClass()))
+        return;
+
+    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, message, GOSSIP_SENDER_MAIN, action);
+}
+
+void NotifyInvalidRaceClassCombination(Player* player)
+{
+    ChatHandler(player->GetSession()).PSendSysMessage(
+        "|cffff0000[Racial Trait Swap]|r Your class cannot use that race's traits.");
+    CloseGossipMenuFor(player);
+}
+
 class Azerothcore_Race_Trait_announce : public PlayerScript
 {
 public:
@@ -809,21 +871,28 @@ public:
 
         ClearGossipMenuFor(player);
 
+        uint8 const requestedRace = GetRaceForGossipAction(gossipListId);
+        if (requestedRace != RACE_NONE && !IsValidRaceClassCombination(requestedRace, player->getClass()))
+        {
+            NotifyInvalidRaceClassCombination(player);
+            return true;
+        }
+
         switch (gossipListId)
         {
             case 11:
                 if (player)
                 {
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageBE.str(), GOSSIP_SENDER_MAIN, 1); // Blood Elf Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageDR.str(), GOSSIP_SENDER_MAIN, 2); // Draenei Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageDW.str(), GOSSIP_SENDER_MAIN, 3); // Dwarves Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageGN.str(), GOSSIP_SENDER_MAIN, 4); // Gnome Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageHU.str(), GOSSIP_SENDER_MAIN, 5); // Human Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageNE.str(), GOSSIP_SENDER_MAIN, 6); // Night Elf Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageOR.str(), GOSSIP_SENDER_MAIN, 7); // Orc Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageTA.str(), GOSSIP_SENDER_MAIN, 8); // Tauren Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageTR.str(), GOSSIP_SENDER_MAIN, 9); // Troll Selection
-                    AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG, messageUN.str(), GOSSIP_SENDER_MAIN, 10); // Undead
+                    AddRacialGossipOption(player, messageBE.str(), RACE_BLOODELF, 1);
+                    AddRacialGossipOption(player, messageDR.str(), RACE_DRAENEI, 2);
+                    AddRacialGossipOption(player, messageDW.str(), RACE_DWARF, 3);
+                    AddRacialGossipOption(player, messageGN.str(), RACE_GNOME, 4);
+                    AddRacialGossipOption(player, messageHU.str(), RACE_HUMAN, 5);
+                    AddRacialGossipOption(player, messageNE.str(), RACE_NIGHTELF, 6);
+                    AddRacialGossipOption(player, messageOR.str(), RACE_ORC, 7);
+                    AddRacialGossipOption(player, messageTA.str(), RACE_TAUREN, 8);
+                    AddRacialGossipOption(player, messageTR.str(), RACE_TROLL, 9);
+                    AddRacialGossipOption(player, messageUN.str(), RACE_UNDEAD_PLAYER, 10);
                     AddGossipItemFor(player, GOSSIP_ICON_TALK, localizedExit, GOSSIP_SENDER_MAIN, 1111);
                     SendGossipMenuFor(player, 98888, creature->GetGUID());
                 }
