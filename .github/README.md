@@ -47,7 +47,10 @@ We have a lot of modules already made by the community, many of which can be fou
 
 ## Installation
 
-Detailed installation instructions are available [here](http://www.azerothcore.org/wiki/installation).
+From-scratch Ubuntu 24.04 (MySQL 8.4 LTS, CMake, client data, first boot):
+[doc/install-ubuntu-24.04.md](../doc/install-ubuntu-24.04.md).
+
+The official AzerothCore wiki (all platforms) is [here](http://www.azerothcore.org/wiki/installation).
 
 ## Contributing
 
