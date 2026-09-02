@@ -3,7 +3,7 @@
 -- ScriptName must stay npc_challenge_modes / gobject_challenge_modes.
 -- Spawn the NPC with: .npc add 190012
 
-DELETE FROM `creature` WHERE `id1` = 190012 AND `guid` BETWEEN 5900120 AND 5900128;
+DELETE FROM `creature` WHERE `id` = 190012 AND `guid` BETWEEN 5900120 AND 5900128;
 DELETE FROM `creature_template_locale` WHERE `entry` = 190012;
 DELETE FROM `creature_template_model` WHERE `CreatureID` = 190012;
 DELETE FROM `creature_template` WHERE `entry` = 190012;
@@ -16,15 +16,15 @@ DELETE FROM `gameobject_template` WHERE `entry` = 254605;
 INSERT INTO `npc_text` (`ID`, `text0_0`, `text0_1`, `BroadcastTextID0`, `lang0`, `Probability0`,
     `em0_0`, `em0_1`, `em0_2`, `em0_3`, `em0_4`, `em0_5`, `VerifiedBuild`) VALUES
 (190012,
-    'The Keeper of Challenges weighs your resolve.$B$BYou may accept ONE challenge per character, and only at level 1 (or level 55 if you are a Death Knight). Once accepted it cannot be turned off.$B$BThe realm announces when you accept a mode, when a Hardcore or Iron Man champion falls, and when you finish the run at level 80.$B$BOpen Info on a mode to read the full rules. Choose carefully.',
+    'The Keeper of Challenges weighs your resolve.$B$BYou may accept a challenge only at level 1 (or level 55 if you are a Death Knight). Once accepted, a challenge cannot be turned off.$B$BChoose carefully.',
     '', 0, 0, 1, 0, 0, 0, 0, 0, 0, 12340);
 
 INSERT INTO `npc_text_locale` (`ID`, `Locale`, `Text0_0`, `Text0_1`) VALUES
 (190012, 'esES',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
     ''),
 (190012, 'esMX',
-    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar UN desafio por personaje, y solo en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BEl reino anuncia cuando aceptas un modo, cuando cae un campeon Hardcore o Iron Man, y cuando completas el reto al nivel 80.$B$BAbre Info en un modo para leer las reglas completas. Elige con cuidado.',
+    'El Guardian de los Desafios sopesa tu determinacion.$B$BSolo puedes aceptar un desafio en nivel 1 (o 55 si eres Caballero de la Muerte). Una vez aceptado, no se puede desactivar.$B$BElige con cuidado.',
     '');
 
 INSERT INTO `gossip_menu` (`MenuID`, `TextID`) VALUES
@@ -70,7 +70,7 @@ INSERT INTO `gameobject_template` (`entry`, `type`, `displayId`, `name`, `IconNa
     0, 0, 0, 0, 0, '', 'gobject_challenge_modes', 0);
 
 -- Starting-area keepers (same spots as the original shrine).
-INSERT INTO `creature` (`guid`, `id1`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
+/*INSERT INTO `creature` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `equipment_id`, `position_x`, `position_y`,
     `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `currentwaypoint`, `curhealth`, `curmana`,
     `MovementType`, `npcflag`, `unit_flags`, `dynamicflags`, `ScriptName`, `VerifiedBuild`, `CreateObject`,
     `Comment`) VALUES
@@ -83,3 +83,4 @@ INSERT INTO `creature` (`guid`, `id1`, `map`, `spawnMask`, `phaseMask`, `equipme
 (5900126, 190012, 1, 1, 1, 0, -2994.22, -136.321, 77.9491, 1.05411, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Mulgore'),
 (5900127, 190012, 530, 1, 1, 0, 10452, -6389.91, 43.7962, 1.84851, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Eversong'),
 (5900128, 190012, 609, 1, 1, 0, 2415.84, -5649.91, 376.819, 1.87356, 300, 0, 0, 1, 0, 0, 0, 0, 0, '', 12340, 0, 'Challenge keeper - Ebon Hold');
+*/

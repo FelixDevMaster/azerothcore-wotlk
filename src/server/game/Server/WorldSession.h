@@ -494,6 +494,7 @@ public:
     uint32 GetTotalTime() const { return m_total_time; }
 
     void InitWarden(SessionKey const&, std::string const& os);
+    // Returns nullptr when Warden is disabled or the client OS has no module.
     Warden* GetWarden();
 
     /// Session in auth.queue currently
