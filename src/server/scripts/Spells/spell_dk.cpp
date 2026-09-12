@@ -1602,16 +1602,37 @@ class spell_dk_death_pact : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targetList)
     {
-        Unit* target = nullptr;
-        for (std::list<WorldObject*>::iterator itr = targetList.begin(); itr != targetList.end(); ++itr)
+        Unit* ghoulPet = nullptr;
+        Unit* gargoyle = nullptr;
+        Unit* fallback = nullptr;
+
+        for (WorldObject* object : targetList)
         {
-            if (Unit* unit = (*itr)->ToUnit())
-                if (unit->GetOwnerGUID() == GetCaster()->GetGUID() && unit->GetCreatureType() == CREATURE_TYPE_UNDEAD)
-                {
-                    target = unit;
+            Unit* unit = object->ToUnit();
+            if (!unit || unit->GetOwnerGUID() != GetCaster()->GetGUID() || unit->GetCreatureType() != CREATURE_TYPE_UNDEAD)
+                continue;
+
+            switch (unit->GetEntry())
+            {
+                case NPC_DK_GHOUL:
+                case NPC_RISEN_ALLY:
+                    ghoulPet = unit;
                     break;
-                }
+                case NPC_EBON_GARGOYLE:
+                    gargoyle = unit;
+                    break;
+                default:
+                    if (!fallback)
+                        fallback = unit;
+                    break;
+            }
         }
+
+        Unit* target = ghoulPet;
+        if (!target)
+            target = gargoyle;
+        if (!target)
+            target = fallback;
 
         targetList.clear();
         if (target)
