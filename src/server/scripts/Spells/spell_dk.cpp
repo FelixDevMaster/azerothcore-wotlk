@@ -1602,16 +1602,37 @@ class spell_dk_death_pact : public SpellScript
 
     void FilterTargets(std::list<WorldObject*>& targetList)
     {
-        Unit* target = nullptr;
-        for (std::list<WorldObject*>::iterator itr = targetList.begin(); itr != targetList.end(); ++itr)
+        Unit* ghoulPet = nullptr;
+        Unit* gargoyle = nullptr;
+        Unit* fallback = nullptr;
+
+        for (WorldObject* object : targetList)
         {
-            if (Unit* unit = (*itr)->ToUnit())
-                if (unit->GetOwnerGUID() == GetCaster()->GetGUID() && unit->GetCreatureType() == CREATURE_TYPE_UNDEAD)
-                {
-                    target = unit;
+            Unit* unit = object->ToUnit();
+            if (!unit || unit->GetOwnerGUID() != GetCaster()->GetGUID() || unit->GetCreatureType() != CREATURE_TYPE_UNDEAD)
+                continue;
+
+            switch (unit->GetEntry())
+            {
+                case NPC_DK_GHOUL:
+                case NPC_RISEN_ALLY:
+                    ghoulPet = unit;
                     break;
-                }
+                case NPC_EBON_GARGOYLE:
+                    gargoyle = unit;
+                    break;
+                default:
+                    if (!fallback)
+                        fallback = unit;
+                    break;
+            }
         }
+
+        Unit* target = ghoulPet;
+        if (!target)
+            target = gargoyle;
+        if (!target)
+            target = fallback;
 
         targetList.clear();
         if (target)
@@ -2169,12 +2190,18 @@ class spell_dk_raise_dead : public SpellScript
 
     void HandleRaiseDead(SpellEffIndex /*effIndex*/)
     {
+        Unit* caster = GetCaster();
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(GetGhoulSpellId());
         SpellCastTargets targets;
-        targets.SetDst(*GetHitUnit());
+        targets.SetDst(*caster);
 
-        GetCaster()->CastSpell(targets, spellInfo, nullptr, TRIGGERED_FULL_MASK, nullptr, nullptr, GetCaster()->GetGUID());
-        GetCaster()->ToPlayer()->RemoveSpellCooldown(GetSpellInfo()->Id, true);
+        caster->CastSpell(targets, spellInfo, nullptr, TRIGGERED_FULL_MASK, nullptr, nullptr, caster->GetGUID());
+
+        if (Guardian* ghoul = caster->GetGuardianPet())
+            if (ghoul->IsPetGhoul())
+                ghoul->NearTeleportTo(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ(), caster->GetOrientation());
+
+        caster->ToPlayer()->RemoveSpellCooldown(GetSpellInfo()->Id, true);
     }
 
     void Register() override
