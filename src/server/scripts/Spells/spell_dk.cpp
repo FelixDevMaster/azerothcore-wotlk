@@ -2169,12 +2169,18 @@ class spell_dk_raise_dead : public SpellScript
 
     void HandleRaiseDead(SpellEffIndex /*effIndex*/)
     {
+        Unit* caster = GetCaster();
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(GetGhoulSpellId());
         SpellCastTargets targets;
-        targets.SetDst(*GetHitUnit());
+        targets.SetDst(*caster);
 
-        GetCaster()->CastSpell(targets, spellInfo, nullptr, TRIGGERED_FULL_MASK, nullptr, nullptr, GetCaster()->GetGUID());
-        GetCaster()->ToPlayer()->RemoveSpellCooldown(GetSpellInfo()->Id, true);
+        caster->CastSpell(targets, spellInfo, nullptr, TRIGGERED_FULL_MASK, nullptr, nullptr, caster->GetGUID());
+
+        if (Guardian* ghoul = caster->GetGuardianPet())
+            if (ghoul->IsPetGhoul())
+                ghoul->NearTeleportTo(caster->GetPositionX(), caster->GetPositionY(), caster->GetPositionZ(), caster->GetOrientation());
+
+        caster->ToPlayer()->RemoveSpellCooldown(GetSpellInfo()->Id, true);
     }
 
     void Register() override
