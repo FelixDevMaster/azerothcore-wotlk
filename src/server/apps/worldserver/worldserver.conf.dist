@@ -3841,7 +3841,10 @@ Battleground.QueueAnnouncer.Timer = 30000
 #
 #    Battleground.PrematureFinishTimer
 #        Description: Time (in milliseconds) before battleground will end prematurely if there are
-#                     not enough players on one team. (Values defined in battleground template)
+#                     not enough players on one team. Uses MinPlayersPerTeam from battleground_template
+#                     (or Battleground.Override.LowLevels.MinPlayers for brackets below MaxPlayerLevel).
+#                     Random Battleground matches use the Random template min (10), not AV/IC (20).
+#                     When it fires, every remaining player is teleported out.
 #        Default:     300000 - (Enabled, 5 minutes)
 #                     0      - (Disabled, Not recommended)
 
@@ -3899,14 +3902,16 @@ Battleground.InvitationType = 0
 
 #
 #    Battleground.ReportAFK.Timer
-#        Description: After a few minutes that battle started you can report the player.
+#        Description: Minutes after battleground start before /report afk is accepted.
 #        Default:     4
 
 Battleground.ReportAFK.Timer = 4
 
 #
 #    Battleground.ReportAFK
-#        Description: Number of reports needed to kick someone AFK from Battleground.
+#        Description: Number of reports needed to apply the Idle debuff. When Idle expires the
+#                     player is removed from the battleground. Separate from /afk, which leaves
+#                     immediately (WotLK behaviour; GM accounts can keep AFK via RBAC permission 53).
 #        Range:       1-9
 #        Default:     3
 

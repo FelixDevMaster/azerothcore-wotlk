@@ -414,6 +414,16 @@ Battleground* BattlegroundMgr::CreateNewBattleground(BattlegroundTypeId original
     bg->SetRated(isRated);
     bg->SetRandom(isRandom);
 
+    // Random BG queue starts at the Random template's MinPlayersPerTeam (10), then
+    // picks a map whose own template may require more (AV/IC = 20). Keep the queue
+    // threshold so a 10v10 AV/IC is not treated as underfilled: otherwise
+    // Battleground.PrematureFinishTimer ends the match and teleports every player out.
+    if (isRandom)
+    {
+        if (Battleground* queueTemplate = GetBattlegroundTemplate(originalBgTypeId))
+            bg->SetMinPlayersPerTeam(queueTemplate->GetMinPlayersPerTeam());
+    }
+
     // Set up correct min/max player counts for scoreboards
     if (bg->isArena())
     {
