@@ -202,3 +202,18 @@ TEST_F(LowLevelsMinPlayersOverrideTest, FreeHelperOnTemplateUsesPerBgValue)
     // the member function never applies overrides to templates
     EXPECT_EQ(templateBg.GetMinPlayersPerTeam(), TemplateMinPlayers);
 }
+
+TEST_F(LowLevelsMinPlayersOverrideTest, RandomMaxLevelKeepsQueueMinPlayers)
+{
+    // Random queue starts 10v10 then may pick AV/IC (template min 20). Premature
+    // finish must keep the queue min, or the match ends and every player is kicked.
+    Battleground bg;
+    PvPDifficultyEntry bracket = MakeBracket(80, 80);
+    bg.SetBgTypeID(BATTLEGROUND_RB);
+    bg.SetRandomTypeID(BATTLEGROUND_AV);
+    bg.SetMinPlayersPerTeam(10);
+    bg.SetBracket(&bracket);
+    bg.SetRandom(true);
+
+    EXPECT_EQ(bg.GetMinPlayersPerTeam(), 10u);
+}

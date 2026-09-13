@@ -445,6 +445,10 @@ inline void Battleground::_ProcessProgress(uint32 diff)
     {
         m_PrematureCountDown = true;
         m_PrematureCountDownTimer = sBattlegroundMgr->GetPrematureFinishTime();
+        LOG_DEBUG("bg.battleground",
+            "Premature finish timer started for {} instance {} (Alliance {}, Horde {}, min per team {})",
+            GetName(), GetInstanceID(), GetPlayersCountByTeam(TEAM_ALLIANCE),
+            GetPlayersCountByTeam(TEAM_HORDE), GetMinPlayersPerTeam());
     }
     else if (m_PrematureCountDownTimer < diff)
     {
