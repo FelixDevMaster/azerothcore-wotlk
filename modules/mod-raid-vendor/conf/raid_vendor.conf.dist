@@ -1,0 +1,59 @@
+#
+# WotLK raid multi-vendor for AzerothCore 3.3.5a
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# RAID VENDOR
+#
+#    RaidVendor.Enable
+#        Description: Master switch.
+#        Default:     1
+#
+#    RaidVendor.NPCEntry
+#        Description: creature_template.entry of the quartermaster (must match the module SQL).
+#        Default:     190013
+#
+#    RaidVendor.MinQuality
+#        Description: Minimum item quality to list.
+#                     0 Poor, 1 Common, 2 Uncommon, 3 Rare, 4 Epic, 5 Legendary.
+#        Default:     3 (Rare / blue and above — skips green trash)
+#
+#    RaidVendor.SkipWorldLoot
+#        Description: Ignore world-drop reference loot (IDs >= SkipWorldLootMinRef) so
+#                     generic greens do not flood the raid lists.
+#        Default:     1
+#
+#    RaidVendor.SkipWorldLootMinRef
+#        Description: Reference loot entries at or above this id are treated as world loot.
+#        Default:     1000000
+#
+#    RaidVendor.RatingSlot
+#        Description: Arena slot used for the rating check.
+#                     -1 = highest personal rating among 2v2, 3v3 and 5v5
+#                      0 = 2v2, 1 = 3v3, 2 = 5v5
+#        Default:     -1
+#
+#    RaidVendor.<Raid>.Rating
+#        Description: Minimum arena rating required to open that raid's gossip.
+#                     0 = no rating required.
+#        Raids:       Naxxramas, ObsidianSanctum, EyeOfEternity, VaultOfArchavon,
+#                     Ulduar, TrialOfTheCrusader, IcecrownCitadel, RubySanctum, Onyxia
+#
+
+RaidVendor.Enable = 1
+RaidVendor.NPCEntry = 190013
+RaidVendor.MinQuality = 3
+RaidVendor.SkipWorldLoot = 1
+RaidVendor.SkipWorldLootMinRef = 1000000
+RaidVendor.RatingSlot = -1
+
+RaidVendor.Naxxramas.Rating = 1000
+RaidVendor.ObsidianSanctum.Rating = 1000
+RaidVendor.EyeOfEternity.Rating = 1000
+RaidVendor.VaultOfArchavon.Rating = 1200
+RaidVendor.Ulduar.Rating = 1400
+RaidVendor.TrialOfTheCrusader.Rating = 1600
+RaidVendor.IcecrownCitadel.Rating = 1800
+RaidVendor.RubySanctum.Rating = 2000
+RaidVendor.Onyxia.Rating = 1000
