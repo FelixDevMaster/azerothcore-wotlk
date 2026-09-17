@@ -1,0 +1,57 @@
+#
+# Arena / Battleground QoL for AzerothCore 3.3.5a
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# ARENA / BG QOL
+#
+#    ArenaBgQol.Enable
+#        Description: Master switch. If 0, rituals and the arena ready-check are disabled.
+#        Default:     1
+#
+#    ArenaBgQol.Rituals.Enable
+#        Description: Auto-place Ritual of Refreshment at each mage and Ritual of Souls at each
+#                     warlock when they enter an arena or battleground.
+#        Default:     1
+#
+#    ArenaBgQol.Rituals.Arenas
+#        Description: Spawn rituals in arenas.
+#        Default:     1
+#
+#    ArenaBgQol.Rituals.Battlegrounds
+#        Description: Spawn rituals in battlegrounds.
+#        Default:     1
+#
+#    ArenaBgQol.Rituals.Duration
+#        Description: How long the table / soulwell lasts, in seconds. Vanilla duration is 180.
+#        Default:     180
+#
+#    ArenaBgQol.ReadyCheck.Enable
+#        Description: During arena preparation, send a ready-check popup when the remaining wait
+#                     reaches TriggerTime. If every present player accepts, remaining wait jumps
+#                     to SkipToTime.
+#        Default:     1
+#
+#    ArenaBgQol.ReadyCheck.TriggerTime
+#        Description: Remaining prep seconds when the ready-check popup is sent.
+#        Default:     30
+#
+#    ArenaBgQol.ReadyCheck.SkipToTime
+#        Description: Remaining prep seconds after everyone accepts.
+#        Default:     15
+#
+#    ArenaBgQol.ReadyCheck.Timeout
+#        Description: Seconds to wait for answers. 0 = wait until SkipToTime is reached.
+#        Default:     0
+#
+
+ArenaBgQol.Enable = 1
+ArenaBgQol.Rituals.Enable = 1
+ArenaBgQol.Rituals.Arenas = 1
+ArenaBgQol.Rituals.Battlegrounds = 1
+ArenaBgQol.Rituals.Duration = 180
+ArenaBgQol.ReadyCheck.Enable = 1
+ArenaBgQol.ReadyCheck.TriggerTime = 30
+ArenaBgQol.ReadyCheck.SkipToTime = 15
+ArenaBgQol.ReadyCheck.Timeout = 0
