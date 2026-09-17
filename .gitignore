@@ -132,3 +132,5 @@ __pycache__/
 !/modules/mod-challenge-modes/**
 !/modules/mod-arena-bg-qol/
 !/modules/mod-arena-bg-qol/**
+!/modules/mod-raid-vendor/
+!/modules/mod-raid-vendor/**
