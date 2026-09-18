@@ -18,6 +18,7 @@
 
 class Player;
 class Item;
+class SpellInfo;
 
 enum EnchantSlotCategory : uint8
 {
