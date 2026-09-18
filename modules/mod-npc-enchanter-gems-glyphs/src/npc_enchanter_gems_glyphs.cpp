@@ -31,17 +31,13 @@
 namespace
 {
 constexpr uint8 ENCHANT_PAGE_SIZE = 24;
-
-enum EnchanterGossipAction : uint32
-{
-    GOSSIP_ENCHANT_HELLO      = 0,
-    GOSSIP_ENCHANT_SLOT_BASE  = 10,
-    GOSSIP_ENCHANT_ITEM_BASE  = 50,
-    GOSSIP_ENCHANT_PAGE_NEXT  = 80,
-    GOSSIP_ENCHANT_PAGE_PREV  = 81,
-    GOSSIP_ENCHANT_BACK       = 82,
-    GOSSIP_ENCHANT_APPLY_BASE = 1000
-};
+constexpr uint32 GOSSIP_ENCHANT_HELLO      = 0;
+constexpr uint32 GOSSIP_ENCHANT_SLOT_BASE  = 10;
+constexpr uint32 GOSSIP_ENCHANT_ITEM_BASE  = 50;
+constexpr uint32 GOSSIP_ENCHANT_PAGE_NEXT  = 80;
+constexpr uint32 GOSSIP_ENCHANT_PAGE_PREV  = 81;
+constexpr uint32 GOSSIP_ENCHANT_BACK       = 82;
+constexpr uint32 GOSSIP_ENCHANT_APPLY_BASE = 1000;
 
 uint32 PackEnchantSender(uint8 category, uint8 equipSlot, uint8 page)
 {
@@ -564,7 +560,7 @@ public:
             return true;
         }
 
-        if (action >= GOSSIP_ENCHANT_SLOT_BASE && action < GOSSIP_ENCHANT_SLOT_BASE + ENCHANT_CAT_MAX)
+        if (action >= GOSSIP_ENCHANT_SLOT_BASE && action < GOSSIP_ENCHANT_SLOT_BASE + uint32(ENCHANT_CAT_MAX))
         {
             EnchantSlotCategory category = EnchantSlotCategory(action - GOSSIP_ENCHANT_SLOT_BASE);
             std::vector<Item*> items = EquippedItemsInCategory(player, category);
@@ -585,7 +581,7 @@ public:
             return true;
         }
 
-        if (action >= GOSSIP_ENCHANT_ITEM_BASE && action < GOSSIP_ENCHANT_ITEM_BASE + EQUIPMENT_SLOT_END)
+        if (action >= GOSSIP_ENCHANT_ITEM_BASE && action < GOSSIP_ENCHANT_ITEM_BASE + uint32(EQUIPMENT_SLOT_END))
         {
             SendEnchantList(player, creature, EnchantSlotCategory(sender),
                 uint8(action - GOSSIP_ENCHANT_ITEM_BASE), 0);
