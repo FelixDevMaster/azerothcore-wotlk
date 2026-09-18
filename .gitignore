@@ -130,3 +130,5 @@ __pycache__/
 
 !/modules/mod-challenge-modes/
 !/modules/mod-challenge-modes/**
+!/modules/mod-npc-enchanter-gems-glyphs/
+!/modules/mod-npc-enchanter-gems-glyphs/**

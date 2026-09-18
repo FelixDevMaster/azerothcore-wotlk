@@ -1,0 +1,38 @@
+#
+# NPC Enchanter, last-patch gems, and class glyphs
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# ENCHANTER / GEM VENDOR / GLYPH VENDOR
+#
+#    EnchanterGemsGlyphs.Enable
+#        Description: Enable the three service NPCs (gossip scripts).
+#        Default:     1
+#
+#    EnchanterGemsGlyphs.EnchantMinLevel
+#        Description: Keep Enchanting profession spells whose enchant, spell, or base level
+#                     is at least this value (Wrath end-game is 78+).
+#        Default:     78
+#
+#    EnchanterGemsGlyphs.EnchantMinSkill
+#        Description: Also keep Grand Master recipes at or above this Enchanting skill when
+#                     the spell has no level (many Northrend recipes store 0).
+#        Default:     350
+#
+#    EnchanterGemsGlyphs.EnchantCost
+#        Description: Copper charged per enchant (10000 = 1 gold). 0 = free.
+#        Default:     0
+#
+#    EnchanterGemsGlyphs.EnchanterEntry / GemVendorEntry / GlyphVendorEntry
+#        Description: creature_template.entry values. Must match the module SQL.
+#        Default:     190013 / 190014 / 190015
+#
+
+EnchanterGemsGlyphs.Enable = 1
+EnchanterGemsGlyphs.EnchantMinLevel = 78
+EnchanterGemsGlyphs.EnchantMinSkill = 350
+EnchanterGemsGlyphs.EnchantCost = 0
+EnchanterGemsGlyphs.EnchanterEntry = 190013
+EnchanterGemsGlyphs.GemVendorEntry = 190014
+EnchanterGemsGlyphs.GlyphVendorEntry = 190015
