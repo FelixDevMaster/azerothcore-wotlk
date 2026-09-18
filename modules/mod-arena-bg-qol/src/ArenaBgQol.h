@@ -36,6 +36,14 @@ enum RitualGameObjectIds : uint32
     GO_SOULWELL_R2          = 193169
 };
 
+enum ArenaReadyCheckGossip : uint32
+{
+    GOSSIP_MENU_ARENA_READY       = 91001,
+    GOSSIP_SENDER_ARENA_READY     = 91001,
+    GOSSIP_ACTION_ARENA_READY     = 1,
+    GOSSIP_ACTION_ARENA_NOT_READY = 2
+};
+
 class ArenaBgQol
 {
 public:
@@ -50,6 +58,7 @@ public:
     void HandleUpdate(Battleground* bg, uint32 diff);
     void HandleDestroy(Battleground* bg);
     bool HandleReadyCheckPacket(WorldSession* session, WorldPacket const& packet);
+    void HandleReadyGossipSelect(Player* player, uint32 menuId, uint32 sender, uint32 action);
 
 private:
     enum ReadyCheckStatus : uint8
@@ -72,15 +81,19 @@ private:
     [[nodiscard]] static bool IsSpanish(Player const* player);
     [[nodiscard]] static char const* Msg(Player const* player, char const* spanish, char const* english);
 
+    [[nodiscard]] bool WantsReadyCheck(Battleground const* bg) const;
     ReadyCheckState& GetState(Battleground const* bg);
     void SpawnRitual(Player* player);
     void TrySpawnRitual(Battleground* bg, Player* player);
     void SpawnPendingRituals(Battleground* bg, ReadyCheckState& state);
     void SendReadyCheck(Battleground* bg);
+    void SendReadyPrompt(Battleground* bg, Player* player);
+    void SendReadyGossip(Player* player);
+    ObjectGuid PickReadyCheckInitiator(Battleground const* bg, Player const* recipient) const;
     void FinishReadyCheck(Battleground* bg, ReadyCheckState& state, bool skipWait);
     void HandleReadyAnswer(Battleground* bg, Player* player, bool ready);
     void Announce(Battleground* bg, char const* spanish, char const* english);
-    void SendReadyCheckFinished(Battleground* bg);
+    void CloseReadyPrompts(Battleground* bg);
 
     bool _enabled = true;
     bool _ritualsEnabled = true;

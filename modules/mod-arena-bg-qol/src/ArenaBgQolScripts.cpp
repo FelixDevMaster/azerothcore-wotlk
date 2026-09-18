@@ -9,6 +9,7 @@
 
 #include "ArenaBgQol.h"
 #include "AllBattlegroundScript.h"
+#include "PlayerScript.h"
 #include "ScriptMgr.h"
 #include "ServerScript.h"
 #include "WorldScript.h"
@@ -70,9 +71,23 @@ public:
     }
 };
 
+class ArenaBgQolPlayerScript : public PlayerScript
+{
+public:
+    ArenaBgQolPlayerScript() : PlayerScript("ArenaBgQolPlayerScript", {
+        PLAYERHOOK_ON_GOSSIP_SELECT
+    }) { }
+
+    void OnPlayerGossipSelect(Player* player, uint32 menuId, uint32 sender, uint32 action) override
+    {
+        sArenaBgQol->HandleReadyGossipSelect(player, menuId, sender, action);
+    }
+};
+
 void AddSC_arena_bg_qol()
 {
     new ArenaBgQolWorldScript();
     new ArenaBgQolBattlegroundScript();
     new ArenaBgQolServerScript();
+    new ArenaBgQolPlayerScript();
 }
