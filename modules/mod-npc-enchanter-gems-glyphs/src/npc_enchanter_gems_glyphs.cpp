@@ -12,6 +12,7 @@
 #include "Config.h"
 #include "Creature.h"
 #include "DBCStores.h"
+#include "GossipDef.h"
 #include "Item.h"
 #include "ItemTemplate.h"
 #include "Log.h"
@@ -25,6 +26,7 @@
 #include "StringFormat.h"
 #include "WorldSession.h"
 #include <algorithm>
+#include <cctype>
 #include <unordered_set>
 #include <vector>
 
@@ -262,8 +264,11 @@ std::string GearShopMgr::GetItemName(Item const* item, Player const* player)
     return name;
 }
 
-void GearShopMgr::CollectCategories(int32 inventoryMask, int32 itemClass, std::vector<EnchantSlotCategory>& cats)
+void GearShopMgr::CollectCategories(SpellInfo const* spellInfo, std::vector<EnchantSlotCategory>& cats)
 {
+    if (!spellInfo)
+        return;
+
     std::array<bool, ENCHANT_CAT_MAX> used{};
     auto add = [&](EnchantSlotCategory category)
     {
@@ -273,16 +278,7 @@ void GearShopMgr::CollectCategories(int32 inventoryMask, int32 itemClass, std::v
         cats.push_back(category);
     };
 
-    if (inventoryMask == 0)
-    {
-        if (itemClass == ITEM_CLASS_WEAPON)
-        {
-            add(ENCHANT_CAT_WEAPON);
-            add(ENCHANT_CAT_TWO_HAND);
-        }
-        return;
-    }
-
+    int32 inventoryMask = spellInfo->EquippedItemInventoryTypeMask;
     auto addIf = [&](int32 invType, EnchantSlotCategory category)
     {
         if (inventoryMask & (1 << invType))
@@ -310,6 +306,46 @@ void GearShopMgr::CollectCategories(int32 inventoryMask, int32 itemClass, std::v
         add(ENCHANT_CAT_WEAPON);
     if (inventoryMask & (1 << INVTYPE_2HWEAPON))
         add(ENCHANT_CAT_TWO_HAND);
+
+    if (!cats.empty())
+        return;
+
+    std::string name;
+    if (spellInfo->SpellName[DEFAULT_LOCALE] && spellInfo->SpellName[DEFAULT_LOCALE][0])
+        name = spellInfo->SpellName[DEFAULT_LOCALE];
+    for (char& ch : name)
+        ch = char(std::tolower(static_cast<unsigned char>(ch)));
+
+    auto has = [&](char const* token) { return name.find(token) != std::string::npos; };
+    if (has("glove") || has("guante"))
+        add(ENCHANT_CAT_GLOVES);
+    if (has("chest") || has("pecho") || has("pechera"))
+        add(ENCHANT_CAT_CHEST);
+    if (has("cloak") || has("capa"))
+        add(ENCHANT_CAT_CLOAK);
+    if (has("bracer") || has("brazal") || has("wrist") || has("muneca") || has("muñeca"))
+        add(ENCHANT_CAT_BRACER);
+    if (has("boot") || has("bota") || has("boots") || has("feet"))
+        add(ENCHANT_CAT_BOOTS);
+    if (has("shield") || has("escudo"))
+        add(ENCHANT_CAT_SHIELD);
+    if (has("ring") || has("anillo"))
+        add(ENCHANT_CAT_RING);
+    if (has("staff") || has("baston") || has("2h") || has("two-hand") || has("two hand") || has("dos manos"))
+        add(ENCHANT_CAT_TWO_HAND);
+    if (has("weapon") || has("arma"))
+        add(ENCHANT_CAT_WEAPON);
+    if (has("off-hand") || has("offhand") || has("mano izquierda"))
+        add(ENCHANT_CAT_OFFHAND);
+
+    if (!cats.empty())
+        return;
+
+    if (spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON)
+    {
+        add(ENCHANT_CAT_WEAPON);
+        add(ENCHANT_CAT_TWO_HAND);
+    }
 }
 
 uint32 GearShopMgr::GetEnchantingSkillRank(uint32 spellId)
@@ -354,12 +390,78 @@ bool GearShopMgr::HasEnchants(EnchantSlotCategory category) const
     return !_enchants[category].empty();
 }
 
+void GearShopMgr::EnsureEnchantsLoaded()
+{
+    for (uint8 i = 0; i < ENCHANT_CAT_MAX; ++i)
+        if (!_enchants[i].empty())
+            return;
+    LoadEnchants();
+}
+
 void GearShopMgr::LoadEnchants()
 {
     for (std::vector<EnchantOption>& list : _enchants)
         list.clear();
 
     std::array<std::unordered_set<uint32>, ENCHANT_CAT_MAX> seen;
+
+    auto addOption = [&](uint32 spellId, EnchantSlotCategory category, uint32 enchantId)
+    {
+        if (!seen[category].insert(enchantId).second)
+            return;
+        EnchantOption option;
+        option.SpellId = spellId;
+        option.EnchantId = enchantId;
+        _enchants[category].push_back(option);
+    };
+
+    auto addSpell = [&](uint32 spellId, EnchantSlotCategory category)
+    {
+        SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(spellId);
+        if (!spellInfo)
+            return;
+        for (SpellEffectInfo const& effect : spellInfo->GetEffects())
+        {
+            if (!effect.IsEffect(SPELL_EFFECT_ENCHANT_ITEM) && !effect.IsEffect(SPELL_EFFECT_ENCHANT_ITEM_PRISMATIC))
+                continue;
+            uint32 enchantId = uint32(effect.MiscValue);
+            if (!enchantId || !sSpellItemEnchantmentStore.LookupEntry(enchantId))
+                continue;
+            addOption(spellId, category, enchantId);
+            return;
+        }
+    };
+
+    // Known WotLK Grand Master / end-game enchant spells. Category is explicit so
+    // a missing EquippedItemInventoryTypeMask cannot hide the gossip menus.
+    static uint32 const chestSpells[] = { 60692, 47900, 47766, 44588, 44509, 44623, 27957, 46594 };
+    static uint32 const cloakSpells[] = { 47898, 47672, 44591, 60663, 44500, 44582, 47899, 44631, 60609 };
+    static uint32 const bracerSpells[] = { 62256, 60767, 44575, 44598, 44593, 44616, 44555, 60616, 44635 };
+    static uint32 const gloveSpells[] = { 60668, 44513, 44529, 44488, 44484, 44592, 44625, 44506, 71692 };
+    static uint32 const bootSpells[] = { 60763, 47901, 44589, 44528, 44584, 44508, 60623 };
+    static uint32 const weaponSpells[] =
+    {
+        59619, 59621, 59625, 60707, 60714, 44633, 44510, 44629, 44576, 44524,
+        44621, 60621, 42974, 46578, 64441, 64568
+    };
+    static uint32 const twoHandSpells[] = { 60691, 44630, 44595, 62948, 62959 };
+    static uint32 const shieldSpells[] = { 44489, 60653, 44383, 27945 };
+    static uint32 const ringSpells[] = { 44645, 44636, 59636 };
+
+    auto addList = [&](uint32 const* spells, uint32 count, EnchantSlotCategory category)
+    {
+        for (uint32 i = 0; i < count; ++i)
+            addSpell(spells[i], category);
+    };
+    addList(chestSpells, uint32(sizeof(chestSpells) / sizeof(uint32)), ENCHANT_CAT_CHEST);
+    addList(cloakSpells, uint32(sizeof(cloakSpells) / sizeof(uint32)), ENCHANT_CAT_CLOAK);
+    addList(bracerSpells, uint32(sizeof(bracerSpells) / sizeof(uint32)), ENCHANT_CAT_BRACER);
+    addList(gloveSpells, uint32(sizeof(gloveSpells) / sizeof(uint32)), ENCHANT_CAT_GLOVES);
+    addList(bootSpells, uint32(sizeof(bootSpells) / sizeof(uint32)), ENCHANT_CAT_BOOTS);
+    addList(weaponSpells, uint32(sizeof(weaponSpells) / sizeof(uint32)), ENCHANT_CAT_WEAPON);
+    addList(twoHandSpells, uint32(sizeof(twoHandSpells) / sizeof(uint32)), ENCHANT_CAT_TWO_HAND);
+    addList(shieldSpells, uint32(sizeof(shieldSpells) / sizeof(uint32)), ENCHANT_CAT_SHIELD);
+    addList(ringSpells, uint32(sizeof(ringSpells) / sizeof(uint32)), ENCHANT_CAT_RING);
 
     uint32 storeSize = sSpellMgr->GetSpellInfoStoreSize();
     for (uint32 spellId = 1; spellId < storeSize; ++spellId)
@@ -387,20 +489,9 @@ void GearShopMgr::LoadEnchants()
                 continue;
 
             std::vector<EnchantSlotCategory> cats;
-            CollectCategories(spellInfo->EquippedItemInventoryTypeMask, spellInfo->EquippedItemClass, cats);
-            if (cats.empty())
-                continue;
-
-            EnchantOption option;
-            option.SpellId = spellId;
-            option.EnchantId = enchantId;
-
+            CollectCategories(spellInfo, cats);
             for (EnchantSlotCategory category : cats)
-            {
-                if (!seen[category].insert(enchantId).second)
-                    continue;
-                _enchants[category].push_back(option);
-            }
+                addOption(spellId, category, enchantId);
         }
     }
 
@@ -424,6 +515,7 @@ class GearShopWorldScript : public WorldScript
 public:
     GearShopWorldScript() : WorldScript("GearShopWorldScript", {
         WORLDHOOK_ON_AFTER_CONFIG_LOAD,
+        WORLDHOOK_ON_BEFORE_WORLD_INITIALIZED,
         WORLDHOOK_ON_STARTUP
     }) { }
 
@@ -434,9 +526,14 @@ public:
             sGearShopMgr->LoadEnchants();
     }
 
-    void OnStartup() override
+    void OnBeforeWorldInitialized() override
     {
         sGearShopMgr->LoadEnchants();
+    }
+
+    void OnStartup() override
+    {
+        sGearShopMgr->EnsureEnchantsLoaded();
     }
 };
 
@@ -447,8 +544,11 @@ public:
 
     static void SendHello(Player* player, Creature* creature)
     {
+        sGearShopMgr->EnsureEnchantsLoaded();
         ClearGossipMenuFor(player);
+        player->PlayerTalkClass->GetGossipMenu().SetMenuId(NPC_TEXT_ENCHANTER);
         bool spanish = GearShopMgr::IsSpanish(player);
+        uint32 added = 0;
         for (uint8 i = 0; i < ENCHANT_CAT_MAX; ++i)
         {
             EnchantSlotCategory category = EnchantSlotCategory(i);
@@ -456,8 +556,17 @@ public:
                 continue;
             AddGossipItemFor(player, GOSSIP_ICON_TRAINER, GearShopMgr::GetCategoryName(category, spanish),
                 GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_SLOT_BASE + i);
+            ++added;
         }
-        SendGossipMenuFor(player, NPC_TEXT_ENCHANTER, creature);
+        if (!added)
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+                spanish ? "No hay encantamientos cargados. Revisa el log del worldserver."
+                        : "No enchants loaded. Check the worldserver log.",
+                GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_HELLO);
+        uint32 textId = player->GetGossipTextId(creature);
+        if (!textId)
+            textId = NPC_TEXT_ENCHANTER;
+        SendGossipMenuFor(player, textId, creature);
     }
 
     static void SendItemPicker(Player* player, Creature* creature, EnchantSlotCategory category)

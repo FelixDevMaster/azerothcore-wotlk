@@ -42,12 +42,12 @@ enum EnchantSlotCategory : uint8
 
 enum GearShopNpcConst : uint32
 {
-    NPC_ENCHANTER              = 190013,
-    NPC_GEM_VENDOR             = 190014,
-    NPC_GLYPH_VENDOR           = 190015,
-    NPC_TEXT_ENCHANTER         = 190013,
-    NPC_TEXT_GEM_VENDOR        = 190014,
-    NPC_TEXT_GLYPH_VENDOR      = 190015,
+    NPC_ENCHANTER              = 190034,
+    NPC_GEM_VENDOR             = 190035,
+    NPC_GLYPH_VENDOR           = 190036,
+    NPC_TEXT_ENCHANTER         = 190034,
+    NPC_TEXT_GEM_VENDOR        = 190035,
+    NPC_TEXT_GLYPH_VENDOR      = 190036,
     GEM_VENDOR_LIST_BASE       = 1901400,
     GLYPH_VENDOR_LIST_BASE     = 1901500
 };
@@ -65,6 +65,7 @@ public:
 
     void LoadConfig(bool reload);
     void LoadEnchants();
+    void EnsureEnchantsLoaded();
 
     [[nodiscard]] bool IsEnabled() const { return _enabled; }
     [[nodiscard]] uint32 GetEnchantCost() const { return _enchantCost; }
@@ -85,7 +86,7 @@ public:
 private:
     GearShopMgr() = default;
 
-    static void CollectCategories(int32 inventoryMask, int32 itemClass, std::vector<EnchantSlotCategory>& cats);
+    static void CollectCategories(SpellInfo const* spellInfo, std::vector<EnchantSlotCategory>& cats);
     static uint32 GetEnchantingSkillRank(uint32 spellId);
     bool IsEligibleEnchant(SpellInfo const* spellInfo, uint32 requiredLevel, uint32 skillRank) const;
 

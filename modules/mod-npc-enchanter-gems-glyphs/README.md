@@ -4,11 +4,11 @@ Módulo de AzerothCore 3.3.5a con tres NPCs de servicio en Dalaran (Magus Commer
 
 | Entry | Nombre | Qué hace |
 | --- | --- | --- |
-| 190013 | Maestro encantador | Gossip por pieza. Encantamientos de Gran Maestro (nivel 78+) en el objeto equipado. |
-| 190014 | Mercader de gemas | Gossip por color. Gemas épicas de Rasganorte, metas ilvl 80 y prismáticas. |
-| 190015 | Escriba de glifos | Gossip por clase. Todos los glifos mayores y menores de cada clase. |
+| 190034 | Maestro encantador | Gossip por pieza. Encantamientos de Gran Maestro (nivel 78+) en el objeto equipado. |
+| 190035 | Mercader de gemas | Gossip por color. Gemas épicas de Rasganorte, metas ilvl 80 y prismáticas. |
+| 190036 | Escriba de glifos | Gossip por clase. Todos los glifos mayores y menores de cada clase. |
 
-También: `.npc add 190013`, `.npc add 190014`, `.npc add 190015`.
+También: `.npc add 190034`, `.npc add 190035`, `.npc add 190036`.
 
 ---
 
@@ -16,15 +16,16 @@ AzerothCore 3.3.5a module with three service NPCs in Dalaran (Magus Commerce Exc
 
 | Entry | Name | Role |
 | --- | --- | --- |
-| 190013 | Master Enchanter | Gossip by slot. Applies Grand Master (level 78+) Enchanting spells to the equipped item. |
-| 190014 | Gem Merchant | Gossip by color. Sells Icecrown-era epic cuts, ilvl 80 meta gems, and prismatic gems. |
-| 190015 | Glyph Scribe | Gossip by class. Sells every major and minor glyph. |
+| 190034 | Master Enchanter | Gossip by slot. Applies Grand Master (level 78+) Enchanting spells to the equipped item. |
+| 190035 | Gem Merchant | Gossip by color. Sells Icecrown-era epic cuts, ilvl 80 meta gems, and prismatic gems. |
+| 190036 | Glyph Scribe | Gossip by class. Sells every major and minor glyph. |
 
-Or spawn anywhere with `.npc add 190013` / `190014` / `190015`.
+Or spawn anywhere with `.npc add 190034` / `190035` / `190036`.
 
 ## Enchants
 
-The enchanter scans Enchanting profession spells at startup and keeps those with:
+The enchanter always loads the known WotLK Grand Master spells (gloves Crusher, cloak
+Major Agility, weapon Berserking, etc.) and also scans Enchanting recipes with:
 
 - `SpellItemEnchantment.requiredLevel`, `SpellLevel`, or `BaseLevel` >= `EnchantMinLevel` (default **78**), or
 - Enchanting skill rank >= `EnchantMinSkill` (default **350**, Grand Master), for recipes that store level 0.
