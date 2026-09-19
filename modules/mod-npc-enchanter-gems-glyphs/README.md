@@ -27,14 +27,15 @@ shield, and rings. Extra slots appear only when a recipe was classified for them
 
 ## Enchants
 
-The enchanter always loads the known WotLK Grand Master spells (gloves Crusher, cloak
-Major Agility, weapon Berserking, etc.) and also scans Enchanting recipes with:
+The enchanter loads WotLK Grand Master spells, every Enchanting **formula** item
+(Berserking / Rabiar, Black Magic / Magia negra, Accuracy, Blade Ward, Blood Draining,
+Massacre, Mongoose, and the rest), and also scans profession spells with:
 
 - `SpellItemEnchantment.requiredLevel`, `SpellLevel`, or `BaseLevel` >= `EnchantMinLevel` (default **78**), or
 - Enchanting skill rank >= `EnchantMinSkill` (default **350**, Grand Master), for recipes that store level 0.
 
-Menus are hidden when a slot has no matching recipe (Enchanting has no head/leg kits). Gossip shows
-the enchant name plus its stat description. Rings and 1H weapons ask which equipped item to use.
+`Enchant Weapon` formulas appear under both 1H and 2H. Gossip shows the enchant name plus its
+stat description. Rings and 1H weapons ask which equipped item to use.
 
 ## Gems and glyphs
 

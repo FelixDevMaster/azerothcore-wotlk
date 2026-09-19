@@ -74,13 +74,30 @@ char const* LocalizedName(std::array<char const*, 16> const& names, LocaleConsta
     return "";
 }
 
+bool EnchantFitsItem(Item* item, SpellInfo const* spellInfo)
+{
+    if (!item || !spellInfo || !item->GetTemplate())
+        return false;
+    if (item->IsFitToSpellRequirements(spellInfo))
+        return true;
+
+    // Formula weapon enchants (Berserking, Black Magic, ...) often omit INVTYPE_2HWEAPON
+    // in EquippedItemInventoryTypeMask even though they apply to two-handers.
+    if (spellInfo->EquippedItemClass != -1 && spellInfo->EquippedItemClass != ITEM_CLASS_WEAPON)
+        return false;
+    if (item->GetTemplate()->Class != ITEM_CLASS_WEAPON)
+        return false;
+    int32 subMask = spellInfo->EquippedItemSubClassMask;
+    return !subMask || (subMask & (1 << item->GetTemplate()->SubClass));
+}
+
 std::vector<EnchantOption> FilterEnchantsForItem(Item* item, EnchantSlotCategory category)
 {
     std::vector<EnchantOption> filtered;
     for (EnchantOption const& option : sGearShopMgr->GetEnchants(category))
     {
         SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(option.SpellId);
-        if (spellInfo && item->IsFitToSpellRequirements(spellInfo))
+        if (EnchantFitsItem(item, spellInfo))
             filtered.push_back(option);
     }
     return filtered;
@@ -102,7 +119,7 @@ bool ApplyEnchantToItem(Player* player, Item* item, EnchantOption const& option)
 {
     SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(option.SpellId);
     SpellItemEnchantmentEntry const* enchant = sSpellItemEnchantmentStore.LookupEntry(option.EnchantId);
-    if (!spellInfo || !enchant || !item->IsFitToSpellRequirements(spellInfo))
+    if (!spellInfo || !enchant || !EnchantFitsItem(item, spellInfo))
         return false;
 
     if (enchant->requiredLevel && player->GetLevel() < enchant->requiredLevel)
@@ -303,17 +320,47 @@ void GearShopMgr::CollectCategories(SpellInfo const* spellInfo, std::vector<Ench
     addIf(INVTYPE_RANGEDRIGHT, ENCHANT_CAT_RANGED);
     addIf(INVTYPE_THROWN, ENCHANT_CAT_RANGED);
 
-    if (inventoryMask & ((1 << INVTYPE_WEAPON) | (1 << INVTYPE_WEAPONMAINHAND) | (1 << INVTYPE_WEAPONOFFHAND)))
+    bool const has1H = inventoryMask & ((1 << INVTYPE_WEAPON) | (1 << INVTYPE_WEAPONMAINHAND) |
+        (1 << INVTYPE_WEAPONOFFHAND));
+    bool const has2H = inventoryMask & (1 << INVTYPE_2HWEAPON);
+    if (has1H)
         add(ENCHANT_CAT_WEAPON);
-    if (inventoryMask & (1 << INVTYPE_2HWEAPON))
+    if (has2H)
+        add(ENCHANT_CAT_TWO_HAND);
+    // Enchant Weapon - Berserking / Black Magic apply to two-handers too.
+    if (has1H && !has2H)
         add(ENCHANT_CAT_TWO_HAND);
 
     if (!cats.empty())
         return;
 
-    std::string name;
     if (spellInfo->SpellName[DEFAULT_LOCALE] && spellInfo->SpellName[DEFAULT_LOCALE][0])
-        name = spellInfo->SpellName[DEFAULT_LOCALE];
+        CollectCategoriesFromName(spellInfo->SpellName[DEFAULT_LOCALE], cats);
+
+    if (!cats.empty())
+        return;
+
+    if (spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON)
+    {
+        add(ENCHANT_CAT_WEAPON);
+        add(ENCHANT_CAT_TWO_HAND);
+    }
+}
+
+void GearShopMgr::CollectCategoriesFromName(std::string name, std::vector<EnchantSlotCategory>& cats)
+{
+    std::array<bool, ENCHANT_CAT_MAX> used{};
+    for (EnchantSlotCategory category : cats)
+        used[category] = true;
+
+    auto add = [&](EnchantSlotCategory category)
+    {
+        if (used[category])
+            return;
+        used[category] = true;
+        cats.push_back(category);
+    };
+
     for (char& ch : name)
         ch = char(std::tolower(static_cast<unsigned char>(ch)));
 
@@ -332,17 +379,14 @@ void GearShopMgr::CollectCategories(SpellInfo const* spellInfo, std::vector<Ench
         add(ENCHANT_CAT_SHIELD);
     if (has("ring") || has("anillo"))
         add(ENCHANT_CAT_RING);
-    if (has("staff") || has("baston") || has("2h") || has("two-hand") || has("two hand") || has("dos manos"))
-        add(ENCHANT_CAT_TWO_HAND);
-    if (has("weapon") || has("arma"))
-        add(ENCHANT_CAT_WEAPON);
     if (has("off-hand") || has("offhand") || has("mano izquierda"))
         add(ENCHANT_CAT_OFFHAND);
 
-    if (!cats.empty())
-        return;
-
-    if (spellInfo->EquippedItemClass == ITEM_CLASS_WEAPON)
+    bool const isTwoHand = has("2h") || has("two-hand") || has("two hand") || has("dos manos")
+        || has("staff") || has("baston");
+    if (isTwoHand)
+        add(ENCHANT_CAT_TWO_HAND);
+    else if (has("weapon") || has("arma"))
     {
         add(ENCHANT_CAT_WEAPON);
         add(ENCHANT_CAT_TWO_HAND);
@@ -443,7 +487,7 @@ void GearShopMgr::LoadEnchants()
     static uint32 const weaponSpells[] =
     {
         59619, 59621, 59625, 60707, 60714, 44633, 44510, 44629, 44576, 44524,
-        44621, 60621, 42974, 46578, 64441, 64568
+        44621, 60621, 42974, 46578, 64441, 64568, 27984, 28004, 28003, 27982, 27981
     };
     static uint32 const twoHandSpells[] = { 60691, 44630, 44595, 62948, 62959 };
     static uint32 const shieldSpells[] = { 44489, 60653, 44383, 27945 };
@@ -460,6 +504,7 @@ void GearShopMgr::LoadEnchants()
     addList(gloveSpells, uint32(sizeof(gloveSpells) / sizeof(uint32)), ENCHANT_CAT_GLOVES);
     addList(bootSpells, uint32(sizeof(bootSpells) / sizeof(uint32)), ENCHANT_CAT_BOOTS);
     addList(weaponSpells, uint32(sizeof(weaponSpells) / sizeof(uint32)), ENCHANT_CAT_WEAPON);
+    addList(weaponSpells, uint32(sizeof(weaponSpells) / sizeof(uint32)), ENCHANT_CAT_TWO_HAND);
     addList(twoHandSpells, uint32(sizeof(twoHandSpells) / sizeof(uint32)), ENCHANT_CAT_TWO_HAND);
     addList(shieldSpells, uint32(sizeof(shieldSpells) / sizeof(uint32)), ENCHANT_CAT_SHIELD);
     addList(ringSpells, uint32(sizeof(ringSpells) / sizeof(uint32)), ENCHANT_CAT_RING);
@@ -493,6 +538,56 @@ void GearShopMgr::LoadEnchants()
             CollectCategories(spellInfo, cats);
             for (EnchantSlotCategory category : cats)
                 addOption(spellId, category, enchantId);
+        }
+    }
+
+    // Every Enchanting formula item (Berserking, Black Magic, Crusher, ...).
+    if (ItemTemplateContainer const* items = sObjectMgr->GetItemTemplateStore())
+    {
+        for (auto const& pair : *items)
+        {
+            ItemTemplate const& proto = pair.second;
+            if (proto.Class != ITEM_CLASS_RECIPE || proto.SubClass != ITEM_SUBCLASS_ENCHANTING_FORMULA)
+                continue;
+
+            uint32 taughtSpell = 0;
+            for (uint8 i = 0; i < MAX_ITEM_PROTO_SPELLS; ++i)
+            {
+                if (proto.Spells[i].SpellTrigger == ITEM_SPELLTRIGGER_LEARN_SPELL_ID && proto.Spells[i].SpellId > 0)
+                {
+                    taughtSpell = uint32(proto.Spells[i].SpellId);
+                    break;
+                }
+            }
+            if (!taughtSpell)
+                continue;
+
+            SpellInfo const* spellInfo = sSpellMgr->GetSpellInfo(taughtSpell);
+            if (!spellInfo || !spellInfo->HasEffect(SPELL_EFFECT_ENCHANT_ITEM))
+                continue;
+
+            uint32 skillRank = proto.RequiredSkill == SKILL_ENCHANTING
+                ? proto.RequiredSkillRank
+                : GetEnchantingSkillRank(taughtSpell);
+
+            for (SpellEffectInfo const& effect : spellInfo->GetEffects())
+            {
+                if (!effect.IsEffect(SPELL_EFFECT_ENCHANT_ITEM))
+                    continue;
+
+                uint32 enchantId = uint32(effect.MiscValue);
+                SpellItemEnchantmentEntry const* enchant = sSpellItemEnchantmentStore.LookupEntry(enchantId);
+                if (!enchant || !enchantId)
+                    continue;
+                if (!IsEligibleEnchant(spellInfo, enchant->requiredLevel, skillRank))
+                    continue;
+
+                std::vector<EnchantSlotCategory> cats;
+                CollectCategories(spellInfo, cats);
+                CollectCategoriesFromName(proto.Name1, cats);
+                for (EnchantSlotCategory category : cats)
+                    addOption(taughtSpell, category, enchantId);
+            }
         }
     }
 

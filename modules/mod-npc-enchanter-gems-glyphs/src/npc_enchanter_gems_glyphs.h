@@ -87,6 +87,7 @@ private:
     GearShopMgr() = default;
 
     static void CollectCategories(SpellInfo const* spellInfo, std::vector<EnchantSlotCategory>& cats);
+    static void CollectCategoriesFromName(std::string name, std::vector<EnchantSlotCategory>& cats);
     static uint32 GetEnchantingSkillRank(uint32 spellId);
     bool IsEligibleEnchant(SpellInfo const* spellInfo, uint32 requiredLevel, uint32 skillRank) const;
 
