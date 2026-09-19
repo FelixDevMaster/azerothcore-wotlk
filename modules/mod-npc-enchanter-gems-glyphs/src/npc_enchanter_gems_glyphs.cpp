@@ -26,6 +26,7 @@
 #include "StringFormat.h"
 #include "WorldSession.h"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <unordered_set>
 #include <vector>
@@ -434,7 +435,7 @@ void GearShopMgr::LoadEnchants()
 
     // Known WotLK Grand Master / end-game enchant spells. Category is explicit so
     // a missing EquippedItemInventoryTypeMask cannot hide the gossip menus.
-    static uint32 const chestSpells[] = { 60692, 47900, 47766, 44588, 44509, 44623, 27957, 46594 };
+    static uint32 const chestSpells[] = { 60692, 47900, 47766, 44588, 44509, 44623, 44492, 27957, 46594 };
     static uint32 const cloakSpells[] = { 47898, 47672, 44591, 60663, 44500, 44582, 47899, 44631, 60609 };
     static uint32 const bracerSpells[] = { 62256, 60767, 44575, 44598, 44593, 44616, 44555, 60616, 44635 };
     static uint32 const gloveSpells[] = { 60668, 44513, 44529, 44488, 44484, 44592, 44625, 44506, 71692 };
@@ -542,31 +543,45 @@ class npc_gear_enchanter : public CreatureScript
 public:
     npc_gear_enchanter() : CreatureScript("npc_gear_enchanter") { }
 
+    static uint32 GossipTextId(Player* player, Creature* creature)
+    {
+        uint32 textId = player->GetGossipTextId(creature);
+        if (textId && textId != DEFAULT_GOSSIP_MESSAGE)
+            return textId;
+        return DEFAULT_GOSSIP_MESSAGE;
+    }
+
     static void SendHello(Player* player, Creature* creature)
     {
         sGearShopMgr->EnsureEnchantsLoaded();
         ClearGossipMenuFor(player);
-        player->PlayerTalkClass->GetGossipMenu().SetMenuId(NPC_TEXT_ENCHANTER);
+        player->PlayerTalkClass->GetGossipMenu().SetMenuId(creature->GetGossipMenuId());
         bool spanish = GearShopMgr::IsSpanish(player);
-        uint32 added = 0;
+
+        // Always list the Enchanting slots. Hiding empty categories used to send a
+        // gossip packet with 0 options, which the 3.3.5 client treats as no menu.
+        static EnchantSlotCategory const helloSlots[] =
+        {
+            ENCHANT_CAT_CHEST, ENCHANT_CAT_CLOAK, ENCHANT_CAT_BRACER, ENCHANT_CAT_GLOVES,
+            ENCHANT_CAT_BOOTS, ENCHANT_CAT_WEAPON, ENCHANT_CAT_TWO_HAND, ENCHANT_CAT_SHIELD,
+            ENCHANT_CAT_RING
+        };
+        std::array<bool, ENCHANT_CAT_MAX> listed{};
+        for (EnchantSlotCategory category : helloSlots)
+        {
+            listed[category] = true;
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GearShopMgr::GetCategoryName(category, spanish),
+                GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_SLOT_BASE + uint32(category));
+        }
         for (uint8 i = 0; i < ENCHANT_CAT_MAX; ++i)
         {
-            EnchantSlotCategory category = EnchantSlotCategory(i);
-            if (!sGearShopMgr->HasEnchants(category))
+            if (listed[i] || !sGearShopMgr->HasEnchants(EnchantSlotCategory(i)))
                 continue;
-            AddGossipItemFor(player, GOSSIP_ICON_TRAINER, GearShopMgr::GetCategoryName(category, spanish),
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT, GearShopMgr::GetCategoryName(EnchantSlotCategory(i), spanish),
                 GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_SLOT_BASE + i);
-            ++added;
         }
-        if (!added)
-            AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-                spanish ? "No hay encantamientos cargados. Revisa el log del worldserver."
-                        : "No enchants loaded. Check the worldserver log.",
-                GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_HELLO);
-        uint32 textId = player->GetGossipTextId(creature);
-        if (!textId)
-            textId = NPC_TEXT_ENCHANTER;
-        SendGossipMenuFor(player, textId, creature);
+
+        SendGossipMenuFor(player, GossipTextId(player, creature), creature);
     }
 
     static void SendItemPicker(Player* player, Creature* creature, EnchantSlotCategory category)
@@ -593,7 +608,7 @@ public:
         }
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, spanish ? "Atras" : "Back",
             GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_BACK);
-        SendGossipMenuFor(player, NPC_TEXT_ENCHANTER, creature);
+        SendGossipMenuFor(player, GossipTextId(player, creature), creature);
     }
 
     static void SendEnchantList(Player* player, Creature* creature, EnchantSlotCategory category,
@@ -620,7 +635,7 @@ public:
                 GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_BACK);
             AddGossipItemFor(player, GOSSIP_ICON_CHAT, spanish ? "Atras" : "Back",
                 GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_BACK);
-            SendGossipMenuFor(player, NPC_TEXT_ENCHANTER, creature);
+            SendGossipMenuFor(player, GossipTextId(player, creature), creature);
             return;
         }
 
@@ -646,13 +661,20 @@ public:
 
         AddGossipItemFor(player, GOSSIP_ICON_CHAT, spanish ? "Atras" : "Back",
             GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_BACK);
-        SendGossipMenuFor(player, NPC_TEXT_ENCHANTER, creature);
+        SendGossipMenuFor(player, GossipTextId(player, creature), creature);
     }
 
     bool OnGossipHello(Player* player, Creature* creature) override
     {
         if (!sGearShopMgr->IsEnabled())
-            return false;
+        {
+            ClearGossipMenuFor(player);
+            AddGossipItemFor(player, GOSSIP_ICON_CHAT,
+                GearShopMgr::IsSpanish(player) ? "El encantador esta desactivado." : "The enchanter is disabled.",
+                GOSSIP_SENDER_MAIN, GOSSIP_ENCHANT_HELLO);
+            SendGossipMenuFor(player, GossipTextId(player, creature), creature);
+            return true;
+        }
 
         SendHello(player, creature);
         return true;

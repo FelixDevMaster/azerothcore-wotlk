@@ -3,11 +3,12 @@
 -- Spawned in Dalaran (Magus Commerce Exchange). Also: .npc add 190034 / 190035 / 190036
 
 DELETE FROM `creature` WHERE `guid` IN (5900130, 5900131, 5900132, 5900340, 5900341, 5900342);
-DELETE FROM `creature` WHERE `id1` IN (190013, 190014, 190015, 190034, 190035, 190036)
-    AND `guid` BETWEEN 5900130 AND 5900342;
+DELETE FROM `creature` WHERE `id1` IN (190013, 190014, 190015);
 DELETE FROM `creature_template_locale` WHERE `entry` IN (190013, 190014, 190015, 190034, 190035, 190036);
 DELETE FROM `creature_template_model` WHERE `CreatureID` IN (190013, 190014, 190015, 190034, 190035, 190036);
 DELETE FROM `creature_template` WHERE `entry` IN (190013, 190014, 190015, 190034, 190035, 190036);
+DELETE FROM `gossip_menu_option_locale` WHERE `MenuID` IN (190013, 190014, 190015, 190034, 190035, 190036);
+DELETE FROM `gossip_menu_option` WHERE `MenuID` IN (190013, 190014, 190015, 190034, 190035, 190036);
 DELETE FROM `gossip_menu` WHERE `MenuID` IN (190013, 190014, 190015, 190034, 190035, 190036);
 DELETE FROM `npc_text_locale` WHERE `ID` IN (190013, 190014, 190015, 190034, 190035, 190036);
 DELETE FROM `npc_text` WHERE `ID` IN (190013, 190014, 190015, 190034, 190035, 190036);
@@ -50,6 +51,46 @@ INSERT INTO `gossip_menu` (`MenuID`, `TextID`) VALUES
 (190034, 190034),
 (190035, 190035),
 (190036, 190036);
+
+-- Fallback options if the C++ script is not bound. Scripted gossip replaces these at runtime.
+INSERT INTO `gossip_menu_option` (`MenuID`, `OptionID`, `OptionIcon`, `OptionText`, `OptionBroadcastTextID`,
+    `OptionType`, `OptionNpcFlag`, `ActionMenuID`, `ActionPoiID`, `BoxCoded`, `BoxMoney`, `BoxText`,
+    `BoxBroadcastTextID`, `VerifiedBuild`) VALUES
+(190034, 0, 0, 'Enchant Chest', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 1, 0, 'Enchant Cloak', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 2, 0, 'Enchant Bracers', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 3, 0, 'Enchant Gloves', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 4, 0, 'Enchant Boots', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 5, 0, 'Enchant Weapon', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 6, 0, 'Enchant Two-Handed Weapon', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 7, 0, 'Enchant Shield', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190034, 8, 0, 'Enchant Rings', 0, 1, 1, 0, 0, 0, 0, '', 0, 12340),
+(190035, 0, 1, 'All gems', 0, 3, 128, 0, 0, 0, 0, '', 0, 12340),
+(190036, 0, 1, 'Browse class glyphs', 0, 3, 128, 0, 0, 0, 0, '', 0, 12340);
+
+INSERT INTO `gossip_menu_option_locale` (`MenuID`, `OptionID`, `Locale`, `OptionText`, `BoxText`) VALUES
+(190034, 0, 'esES', 'Encantar pecho', ''),
+(190034, 0, 'esMX', 'Encantar pecho', ''),
+(190034, 1, 'esES', 'Encantar capa', ''),
+(190034, 1, 'esMX', 'Encantar capa', ''),
+(190034, 2, 'esES', 'Encantar brazales', ''),
+(190034, 2, 'esMX', 'Encantar brazales', ''),
+(190034, 3, 'esES', 'Encantar guantes', ''),
+(190034, 3, 'esMX', 'Encantar guantes', ''),
+(190034, 4, 'esES', 'Encantar botas', ''),
+(190034, 4, 'esMX', 'Encantar botas', ''),
+(190034, 5, 'esES', 'Encantar arma', ''),
+(190034, 5, 'esMX', 'Encantar arma', ''),
+(190034, 6, 'esES', 'Encantar arma de dos manos', ''),
+(190034, 6, 'esMX', 'Encantar arma de dos manos', ''),
+(190034, 7, 'esES', 'Encantar escudo', ''),
+(190034, 7, 'esMX', 'Encantar escudo', ''),
+(190034, 8, 'esES', 'Encantar anillos', ''),
+(190034, 8, 'esMX', 'Encantar anillos', ''),
+(190035, 0, 'esES', 'Todas las gemas', ''),
+(190035, 0, 'esMX', 'Todas las gemas', ''),
+(190036, 0, 'esES', 'Ver glifos de clase', ''),
+(190036, 0, 'esMX', 'Ver glifos de clase', '');
 
 INSERT INTO `creature_template` (`entry`, `difficulty_entry_1`, `difficulty_entry_2`, `difficulty_entry_3`,
     `KillCredit1`, `KillCredit2`, `name`, `subname`, `IconName`, `gossip_menu_id`, `minlevel`, `maxlevel`, `exp`,

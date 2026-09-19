@@ -22,6 +22,9 @@ AzerothCore 3.3.5a module with three service NPCs in Dalaran (Magus Commerce Exc
 
 Or spawn anywhere with `.npc add 190034` / `190035` / `190036`.
 
+The hello menu always lists chest, cloak, bracers, gloves, boots, weapon, two-hand,
+shield, and rings. Extra slots appear only when a recipe was classified for them.
+
 ## Enchants
 
 The enchanter always loads the known WotLK Grand Master spells (gloves Crusher, cloak
@@ -48,6 +51,8 @@ Prices use each item's `BuyPrice` (many glyphs are 0 copper).
 2. Rebuild worldserver so the module is linked.
 3. Copy `conf/npc_enchanter_gems_glyphs.conf.dist` next to `worldserver.conf` (or merge it).
 4. Start worldserver once so the updater applies `data/sql/world/npc_enchanter_gems_glyphs.sql`.
+   If that file was applied before (old entries 190013-190015), the updater reapplies it when
+   the hash changes. Or import it by hand and `.npc add 190034`.
 
 ## Config
 
