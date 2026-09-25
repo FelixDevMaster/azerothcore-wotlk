@@ -113,25 +113,71 @@ struct npc_pet_dk_ebon_gargoyle : ScriptedAI
         _decisionTimer = 0;
     }
 
+    bool CanAttackGargoyleTarget(Unit* target, Unit* owner) const
+    {
+        if (!target || !me->IsValidAttackTarget(target))
+            return false;
+
+        if (owner && !owner->CanSeeOrDetect(target))
+            return false;
+
+        SpellInfo const* gargoyleStrike = sSpellMgr->GetSpellInfo(SPELL_GARGOYLE_STRIKE);
+        return !target->IsImmunedToSpell(gargoyleStrike);
+    }
+
+    // Ghoul pet's current victim, if the gargoyle can attack it.
+    Unit* GetPetTarget() const
+    {
+        Unit* owner = me->GetOwner();
+        if (!owner || !owner->IsPlayer())
+            return nullptr;
+
+        Unit* pet = owner->ToPlayer()->GetGuardianPet();
+        if (!pet)
+            return nullptr;
+
+        Unit* petVictim = pet->GetVictim();
+        if (!CanAttackGargoyleTarget(petVictim, owner))
+            return nullptr;
+
+        return petVictim;
+    }
+
     void MySelectNextTarget()
     {
         Unit* owner = me->GetOwner();
-        if (owner && owner->IsPlayer() && (!me->GetVictim() || me->GetVictim()->IsImmunedToSpell(sSpellMgr->GetSpellInfo(SPELL_GARGOYLE_STRIKE)) || !me->IsValidAttackTarget(me->GetVictim()) || !owner->CanSeeOrDetect(me->GetVictim())))
-        {
-            Unit* selection = owner->ToPlayer()->GetSelectedUnit();
-            if (selection && selection != me->GetVictim() && me->IsValidAttackTarget(selection))
-            {
-                me->GetMotionMaster()->Clear(false);
-                SetGazeOn(selection);
-            }
+        if (!owner || !owner->IsPlayer())
+            return;
 
-            else if (!me->GetVictim() || !owner->CanSeeOrDetect(me->GetVictim()))
+        // Follow the ghoul whenever it has a usable target.
+        if (Unit* petTarget = GetPetTarget())
+        {
+            if (petTarget != me->GetVictim())
             {
-                me->CombatStop(true);
                 me->GetMotionMaster()->Clear(false);
-                me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, 0.0f);
-                RemoveTargetAura();
+                SetGazeOn(petTarget);
             }
+            return;
+        }
+
+        // No pet target: keep the current victim unless it is unusable.
+        if (me->GetVictim() && CanAttackGargoyleTarget(me->GetVictim(), owner))
+            return;
+
+        Unit* selection = owner->ToPlayer()->GetSelectedUnit();
+        if (selection && selection != me->GetVictim() && CanAttackGargoyleTarget(selection, owner))
+        {
+            me->GetMotionMaster()->Clear(false);
+            SetGazeOn(selection);
+            return;
+        }
+
+        if (!me->GetVictim() || !owner->CanSeeOrDetect(me->GetVictim()))
+        {
+            me->CombatStop(true);
+            me->GetMotionMaster()->Clear(false);
+            me->GetMotionMaster()->MoveFollow(owner, PET_FOLLOW_DIST, 0.0f);
+            RemoveTargetAura();
         }
     }
 
@@ -189,19 +235,24 @@ struct npc_pet_dk_ebon_gargoyle : ScriptedAI
         if (_initialSelection)
         {
             _initialSelection = false;
-            // Find victim of Summon Gargoyle spell
+            // Find victim of Summon Gargoyle spell and drop the owner-applied marker aura.
             std::list<Unit*> targets;
             Acore::AnyUnfriendlyUnitInObjectRangeCheck u_check(me, me, 50.0f);
             Acore::UnitListSearcher<Acore::AnyUnfriendlyUnitInObjectRangeCheck> searcher(me, targets, u_check);
             Cell::VisitObjects(me, searcher, 50.0f);
+            Unit* marked = nullptr;
             for (auto const& target : targets)
                 if (target->GetAura(SPELL_DK_SUMMON_GARGOYLE_1, me->GetOwnerGUID()))
                 {
                     target->RemoveAura(SPELL_DK_SUMMON_GARGOYLE_1, me->GetOwnerGUID());
-                    SetGazeOn(target);
-                    _targetGUID = target->GetGUID();
+                    marked = target;
                     break;
                 }
+
+            if (Unit* petTarget = GetPetTarget())
+                SetGazeOn(petTarget);
+            else if (marked)
+                SetGazeOn(marked);
         }
         if (_despawnTimer > 4000)
         {
