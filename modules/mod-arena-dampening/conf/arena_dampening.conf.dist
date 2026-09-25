@@ -1,0 +1,87 @@
+#
+# Arena Dampening (Cataclysm 4.3.4 / Cata Classic)
+# Copy to the worldserver config directory or merge into worldserver.conf
+#
+
+###################################################################################################
+# ARENA DAMPENING
+#
+# Stacking healing/absorb reduction for arenas, matching Cataclysm Classic / 4.3.4 private-server
+# Dampening (spell 110310 on Cata). On 3.3.5a this module drives the existing client aura
+# "Arena - Dampening" (spell 74410) and raises its amount over time.
+#
+# Defaults follow Cata Classic:
+#   - Combat timer starts when the gates open
+#   - After 5 minutes, Dampening appears at 1%
+#   - It increases by 1% every 10 seconds
+#   - Healing done and absorption effects are reduced by that percent
+#   - Same delay for 2v2, 3v3 and 5v5
+#
+#    ArenaDampening.Enable
+#        Description: Master switch.
+#        Default:     1
+#
+#    ArenaDampening.RatedOnly
+#        Description: 1 = rated arenas only. 0 = rated and skirmish.
+#        Default:     0
+#
+#    ArenaDampening.ApplyToPets
+#        Description: Also apply the 74410 aura to pets / guardians / minions.
+#        Default:     1
+#
+#    ArenaDampening.OverrideWotLKAura
+#        Description: WotLK already autocasts 74410 at a static -10% via spell_area when a
+#                     player enters an arena. 1 = force that aura to 0% until Cata Dampening
+#                     starts, so the match is not pre-dampened. 0 = leave the WotLK -10%
+#                     until the Cata timer fires (the aura then jumps to the Cata value).
+#        Default:     1
+#
+#    ArenaDampening.Announce
+#        Description: Center-screen + chat notice when Dampening starts, and every
+#                     AnnounceEveryPercent after that.
+#        Default:     1
+#
+#    ArenaDampening.AnnounceEveryPercent
+#        Description: Extra announcement each time the percent is a multiple of this value
+#                     (10 = 10%, 20%, ...). 0 = announce start only.
+#        Default:     10
+#
+#    ArenaDampening.StartPercent
+#        Description: Percent applied at the moment Dampening begins.
+#        Default:     1
+#
+#    ArenaDampening.IncrementPercent
+#        Description: Percent added on every tick after the start.
+#        Default:     1
+#
+#    ArenaDampening.MaxPercent
+#        Description: Cap. Healing cannot be reduced below 0% of normal.
+#        Default:     100
+#
+#    ArenaDampening.TickSeconds
+#        Description: Seconds between increments after Dampening has started.
+#        Default:     10
+#
+#    ArenaDampening.StartDelay.2v2
+#    ArenaDampening.StartDelay.3v3
+#    ArenaDampening.StartDelay.5v5
+#        Description: Seconds of combat before Dampening starts, per bracket.
+#                     Cata Classic uses 300 for every bracket. Set 3v3/5v5 to 600
+#                     to match MoP 5.4.7 instead.
+#        Default:     300
+#
+###################################################################################################
+
+ArenaDampening.Enable = 1
+ArenaDampening.RatedOnly = 0
+ArenaDampening.ApplyToPets = 1
+ArenaDampening.OverrideWotLKAura = 1
+ArenaDampening.Announce = 1
+ArenaDampening.AnnounceEveryPercent = 10
+ArenaDampening.StartPercent = 1
+ArenaDampening.IncrementPercent = 1
+ArenaDampening.MaxPercent = 100
+ArenaDampening.TickSeconds = 10
+ArenaDampening.StartDelay.2v2 = 300
+ArenaDampening.StartDelay.3v3 = 300
+ArenaDampening.StartDelay.5v5 = 300
