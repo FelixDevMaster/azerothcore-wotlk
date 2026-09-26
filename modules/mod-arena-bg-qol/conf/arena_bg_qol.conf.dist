@@ -28,9 +28,9 @@
 #        Default:     180
 #
 #    ArenaBgQol.ReadyCheck.Enable
-#        Description: Arena prep only. Shows a ready-check cartel (and a Yes/No window) when the
-#                     remaining wait reaches TriggerTime. If every present player accepts,
-#                     remaining wait jumps to SkipToTime. Battlegrounds never show this prompt.
+#        Description: Arena prep only. Shows the native ready-check cartel when the remaining wait
+#                     reaches TriggerTime. If every present player accepts, remaining wait jumps
+#                     to SkipToTime. Battlegrounds never show this prompt.
 #        Default:     1
 #
 #    ArenaBgQol.ReadyCheck.TriggerTime

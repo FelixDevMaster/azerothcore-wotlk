@@ -42,5 +42,5 @@ Place this folder in `modules/mod-arena-bg-qol` and rebuild worldserver.
 - Rank 2 tables / soulwells are used when the player knows Ritual of Refreshment (58659) or Ritual of Souls (58887); otherwise rank 1.
 - The soulwell is owned by the warlock so Improved Healthstone still applies.
 - Ready check is arena-only. Battlegrounds only spawn rituals; they never show the ready confirmation.
-- The Yes/No cartel is the native raid ready-check UI, using another player as initiator (the client hides the buttons if the initiator is yourself). A gossip window is also opened so 1v1 still has a clickable prompt.
-- Answers come from `MSG_RAID_READY_CHECK` or the gossip options. If anyone clicks "not ready" or the timeout expires, the original countdown continues.
+- The Yes/No cartel is the native raid ready-check UI, using another player as initiator (the client hides the buttons if the initiator is yourself).
+- Answers come from `MSG_RAID_READY_CHECK`. If anyone clicks "not ready" or the timeout expires, the original countdown continues.

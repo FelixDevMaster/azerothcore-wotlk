@@ -12,12 +12,10 @@
 #include "Chat.h"
 #include "Config.h"
 #include "GameObject.h"
-#include "GossipDef.h"
 #include "Log.h"
 #include "ObjectAccessor.h"
 #include "Opcodes.h"
 #include "Player.h"
-#include "ScriptedGossip.h"
 #include "SharedDefines.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -285,8 +283,6 @@ void ArenaBgQol::SendReadyPrompt(Battleground* bg, Player* player)
         player->SendDirectMessage(&data);
     }
 
-    SendReadyGossip(player);
-
     uint32 skipSeconds = uint32(_readyCheckSkipToMs / IN_MILLISECONDS);
     player->GetSession()->SendAreaTriggerMessage("{}", Msg(player,
         "Estas listo? Si todos aceptan, la arena comenzara en breve.",
@@ -294,22 +290,6 @@ void ArenaBgQol::SendReadyPrompt(Battleground* bg, Player* player)
     ChatHandler(player->GetSession()).PSendSysMessage(Msg(player,
         "Ready check: si todos aceptan, la espera pasa a {} segundos.",
         "Ready check: if everyone accepts, the wait drops to {} seconds."), skipSeconds);
-}
-
-void ArenaBgQol::SendReadyGossip(Player* player)
-{
-    ClearGossipMenuFor(player);
-    player->PlayerTalkClass->GetGossipMenu().SetMenuId(GOSSIP_MENU_ARENA_READY);
-
-    bool const spanish = IsSpanish(player);
-    AddGossipItemFor(player, GOSSIP_ICON_BATTLE,
-        spanish ? "Si, estoy listo." : "Yes, I am ready.",
-        GOSSIP_SENDER_ARENA_READY, GOSSIP_ACTION_ARENA_READY);
-    AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-        spanish ? "No, todavia no." : "No, not yet.",
-        GOSSIP_SENDER_ARENA_READY, GOSSIP_ACTION_ARENA_NOT_READY);
-
-    SendGossipMenuFor(player, DEFAULT_GOSSIP_MESSAGE, player->GetGUID());
 }
 
 ObjectGuid ArenaBgQol::PickReadyCheckInitiator(Battleground const* bg, Player const* recipient) const
@@ -346,7 +326,7 @@ void ArenaBgQol::FinishReadyCheck(Battleground* bg, ReadyCheckState& state, bool
 
     state.Status = READY_CHECK_FINISHED;
     state.Pending.clear();
-    CloseReadyPrompts(bg);
+    SendReadyCheckFinished(bg);
 
     if (!skipWait)
     {
@@ -410,18 +390,12 @@ void ArenaBgQol::Announce(Battleground* bg, char const* spanish, char const* eng
     }
 }
 
-void ArenaBgQol::CloseReadyPrompts(Battleground* bg)
+void ArenaBgQol::SendReadyCheckFinished(Battleground* bg)
 {
     WorldPacket data(MSG_RAID_READY_CHECK_FINISHED);
     for (auto const& [guid, player] : bg->GetPlayers())
-    {
-        if (!player)
-            continue;
-
-        player->SendDirectMessage(&data);
-        CloseGossipMenuFor(player);
-        player->PlayerTalkClass->GetGossipMenu().SetMenuId(0);
-    }
+        if (player)
+            player->SendDirectMessage(&data);
 }
 
 bool ArenaBgQol::HandleReadyCheckPacket(WorldSession* session, WorldPacket const& packet)
@@ -454,25 +428,4 @@ bool ArenaBgQol::HandleReadyCheckPacket(WorldSession* session, WorldPacket const
 
     HandleReadyAnswer(bg, player, state != 0);
     return false;
-}
-
-void ArenaBgQol::HandleReadyGossipSelect(Player* player, uint32 menuId, uint32 sender, uint32 action)
-{
-    if (menuId != GOSSIP_MENU_ARENA_READY || sender != GOSSIP_SENDER_ARENA_READY)
-        return;
-
-    if (!player)
-        return;
-
-    CloseGossipMenuFor(player);
-    player->PlayerTalkClass->GetGossipMenu().SetMenuId(0);
-
-    Battleground* bg = player->GetBattleground();
-    if (!WantsReadyCheck(bg))
-        return;
-
-    if (action != GOSSIP_ACTION_ARENA_READY && action != GOSSIP_ACTION_ARENA_NOT_READY)
-        return;
-
-    HandleReadyAnswer(bg, player, action == GOSSIP_ACTION_ARENA_READY);
 }
