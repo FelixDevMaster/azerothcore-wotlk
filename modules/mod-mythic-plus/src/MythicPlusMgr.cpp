@@ -534,36 +534,6 @@ bool MythicPlusMgr::ClaimStarterKey(Player* player, std::string& error)
     return true;
 }
 
-bool MythicPlusMgr::TeleportToKey(Player* player, std::string& error)
-{
-    if (!player)
-        return false;
-    if (!_allowTeleport)
-    {
-        error = "Teleport is disabled.";
-        return false;
-    }
-
-    LoadProfile(player->GetGUID());
-    MythicKeystone const& key = _profiles[player->GetGUID()].Key;
-    MythicDungeonDef const* def = FindMythicDungeon(key.DungeonId);
-    if (!def || !key.Level)
-    {
-        error = IsSpanish(player) ? "No tienes piedra angular." : "You have no keystone.";
-        return false;
-    }
-
-    player->SetDungeonDifficulty(DUNGEON_DIFFICULTY_HEROIC);
-    if (Group* group = player->GetGroup())
-        group->DoForAllMembers([](Player* member)
-        {
-            member->SetDungeonDifficulty(DUNGEON_DIFFICULTY_HEROIC);
-        });
-
-    player->TeleportTo(def->MapId, def->X, def->Y, def->Z, def->O);
-    return true;
-}
-
 void MythicPlusMgr::HandlePlayerEnter(Map* map, Player* player)
 {
     if (!map || !player || !map->IsDungeon() || map->IsRaid())
