@@ -39,7 +39,15 @@ bool MythicPlusMgr::IsSpanish(Player const* player)
         return false;
 
     LocaleConstant locale = player->GetSession()->GetSessionDbcLocale();
+    if (locale == LOCALE_esES || locale == LOCALE_esMX)
+        return true;
+    locale = player->GetSession()->GetSessionDbLocaleIndex();
     return locale == LOCALE_esES || locale == LOCALE_esMX;
+}
+
+char const* MythicPlusMgr::Text(Player const* player, char const* en, char const* es)
+{
+    return IsSpanish(player) ? es : en;
 }
 
 char const* MythicPlusMgr::DungeonName(uint8 dungeonId, bool spanish)
@@ -434,6 +442,8 @@ void MythicPlusMgr::HandleLogin(Player* player)
     MythicProfile const& profile = _profiles[player->GetGUID()];
     if (profile.Key.Level)
         EnsureKeyItem(player);
+    if (_residuumItem && player->HasItemCount(_residuumItem, 1, true))
+        SendCustomItemQuery(player, _residuumItem);
 }
 
 void MythicPlusMgr::HandleLogout(ObjectGuid guid)
@@ -450,9 +460,9 @@ void MythicPlusMgr::EnsureKeyItem(Player* player)
 {
     if (!player || !_keystoneItem)
         return;
-    if (player->HasItemCount(_keystoneItem, 1, true))
-        return;
-    GiveItem(player, _keystoneItem, 1);
+    if (!player->HasItemCount(_keystoneItem, 1, true))
+        GiveItem(player, _keystoneItem, 1);
+    SendCustomItemQuery(player, _keystoneItem);
 }
 
 void MythicPlusMgr::RemoveKeyItem(Player* player)
@@ -471,6 +481,8 @@ void MythicPlusMgr::GiveItem(Player* player, uint32 itemId, uint32 count)
 
     if (!player->StoreNewItemInBestSlots(itemId, count))
         player->SendItemRetrievalMail(itemId, count);
+    if (itemId == _keystoneItem || itemId == _residuumItem)
+        SendCustomItemQuery(player, itemId);
 }
 
 uint8 MythicPlusMgr::PickRandomDungeon(uint8 except) const
@@ -487,7 +499,7 @@ bool MythicPlusMgr::SetKey(Player* player, uint8 dungeonId, uint8 level, std::st
         return false;
     if (!FindMythicDungeon(dungeonId))
     {
-        error = "Unknown dungeon id (1-16).";
+        error = Text(player, "Unknown dungeon id (1-16).", "Id de mazmorra desconocido (1-16).");
         return false;
     }
 
@@ -498,7 +510,7 @@ bool MythicPlusMgr::SetKey(Player* player, uint8 dungeonId, uint8 level, std::st
     profile.Key.Level = level;
     profile.Key.Depleted = false;
     SaveProfile(player->GetGUID());
-    EnsureKeyItem(player);
+    RefreshKeyItem(player);
     error.clear();
     return true;
 }
@@ -509,7 +521,7 @@ bool MythicPlusMgr::ClaimStarterKey(Player* player, std::string& error)
         return false;
     if (player->GetLevel() < _minLevel)
     {
-        error = IsSpanish(player) ? "Necesitas ser nivel 80." : "You must be level 80.";
+        error = Text(player, "You must be level 80.", "Necesitas ser nivel 80.");
         return false;
     }
 
@@ -517,7 +529,7 @@ bool MythicPlusMgr::ClaimStarterKey(Player* player, std::string& error)
     MythicProfile& profile = _profiles[player->GetGUID()];
     if (profile.Key.Level)
     {
-        error = IsSpanish(player) ? "Ya tienes una piedra angular." : "You already have a keystone.";
+        error = Text(player, "You already have a keystone.", "Ya tienes una piedra angular.");
         return false;
     }
 
@@ -525,7 +537,7 @@ bool MythicPlusMgr::ClaimStarterKey(Player* player, std::string& error)
     profile.Key.Level = 2;
     profile.Key.Depleted = false;
     SaveProfile(player->GetGUID());
-    EnsureKeyItem(player);
+    RefreshKeyItem(player);
 
     bool const es = IsSpanish(player);
     ChatHandler(player->GetSession()).PSendSysMessage(
@@ -723,7 +735,7 @@ void MythicPlusMgr::GrantM0Key(Player* player, uint32 mapId)
     profile.Key.Level = 2;
     profile.Key.Depleted = false;
     SaveProfile(player->GetGUID());
-    EnsureKeyItem(player);
+    RefreshKeyItem(player);
 
     bool const es = IsSpanish(player);
     ChatHandler(player->GetSession()).PSendSysMessage(
@@ -856,11 +868,16 @@ std::vector<MythicLeaderboardRow> MythicPlusMgr::GetLeaderboard(uint32 limit)
 
 void MythicPlusMgr::Announce(Map* map, std::string const& message) const
 {
+    Announce(map, message, message);
+}
+
+void MythicPlusMgr::Announce(Map* map, std::string const& en, std::string const& es) const
+{
     if (!map)
         return;
-    map->DoForAllPlayers([&message](Player* player)
+    map->DoForAllPlayers([&en, &es](Player* player)
     {
-        ChatHandler(player->GetSession()).SendSysMessage(message);
+        ChatHandler(player->GetSession()).SendSysMessage(IsSpanish(player) ? es : en);
     });
 }
 
@@ -950,7 +967,7 @@ void MythicPlusMgr::SendStatus(ChatHandler* handler, Player* player) const
     handler->PSendSysMessage(es ? "Piedra: +{} {}{}" : "Keystone: +{} {}{}",
         p.Key.Level, DungeonName(p.Key.DungeonId, es),
         p.Key.Depleted ? (es ? " (agotada)" : " (depleted)") : "");
-    handler->PSendSysMessage(es ? "Score: {:.1f}  Mejor semana: +{}  Runs: {}"
+    handler->PSendSysMessage(es ? "Puntuacion: {:.1f}  Mejor semana: +{}  Runs: {}"
                                 : "Score: {:.1f}  Week best: +{}  Runs: {}",
         p.OverallScore, p.WeekBestLevel, p.WeekRuns);
 
@@ -958,7 +975,7 @@ void MythicPlusMgr::SendStatus(ChatHandler* handler, Player* player) const
     {
         uint32 remain = run->TimeLimitMs > run->ElapsedMs ? run->TimeLimitMs - run->ElapsedMs : 0;
         handler->PSendSysMessage(
-            es ? "En curso: +{} {} — {:02}:{:02}  muertes {}  forces {}/{}  bosses {}/{}"
+            es ? "En curso: +{} {} — {:02}:{:02}  muertes {}  fuerzas {}/{}  jefes {}/{}"
                : "In progress: +{} {} — {:02}:{:02}  deaths {}  forces {}/{}  bosses {}/{}",
             run->Level, DungeonName(run->DungeonId, es),
             remain / 60000, (remain / 1000) % 60, run->Deaths,

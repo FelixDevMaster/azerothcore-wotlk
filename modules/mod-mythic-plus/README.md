@@ -48,6 +48,10 @@ Weekly vault (3 slots):
 
 End-of-run loot is existing WotLK gear + emblems, scaled by key level, plus **Echoes of Domination** (Titan Residuum analog, item `190034`).
 
+The keystone item (`190022`) shows the live dungeon and level in its name (`Mythic Keystone: Utgarde Keep (+12)` / `Piedra angular mitica: Fortaleza de Utgarde (+12)`). Completing, failing, claiming, or `.mplus setkey` destroys and recreates the item and sends a custom item-query so the bag name updates. Icons use stock 3.3.5 `ItemDisplayInfo.dbc` ids (no client patch): **31029** (Key to the Focusing Iris) for the keystone and **56465** (Abyss Crystal) for residuum.
+
+Broker text, gossip, commands, run announces, and the AIO window/HUD follow the client locale (`enUS` or `esES`/`esMX`).
+
 ## Why C++ plus Lua
 
 The 3.3.5 client has no Challenge Mode UI. The module splits the work:

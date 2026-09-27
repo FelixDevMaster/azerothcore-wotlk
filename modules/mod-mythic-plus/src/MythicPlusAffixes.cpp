@@ -15,6 +15,7 @@
 #include "ObjectAccessor.h"
 #include "Player.h"
 #include "SpellMgr.h"
+#include "StringFormat.h"
 #include "TemporarySummon.h"
 #include "ThreatManager.h"
 #include "Unit.h"
@@ -261,7 +262,9 @@ void MythicPlusMgr::ApplyAffixDeath(Map* map, MythicRun& run, Creature* creature
     if (run.HasAffix(AFFIX_REAPING) && run.ReapingKills >= 20 && source)
     {
         run.ReapingKills = 0;
-        Announce(map, "|cff9900ffReaping|r");
+        Announce(map,
+            Acore::StringFormat("|cff9900ff{}|r", AffixName(AFFIX_REAPING, false)),
+            Acore::StringFormat("|cff9900ff{}|r", AffixName(AFFIX_REAPING, true)));
         for (uint8 i = 0; i < 3; ++i)
         {
             if (TempSummon* revenant = source->SummonCreature(NPC_MYTHIC_REAPING, *source,
@@ -377,7 +380,9 @@ void MythicPlusMgr::TickAffixes(Map* map, MythicRun& run, uint32 diff)
         if (run.QuakingMs <= diff)
         {
             run.QuakingMs = 20000;
-            Announce(map, "|cffff9900Quaking|r");
+            Announce(map,
+                Acore::StringFormat("|cffff9900{}|r", AffixName(AFFIX_QUAKING, false)),
+                Acore::StringFormat("|cffff9900{}|r", AffixName(AFFIX_QUAKING, true)));
             std::vector<Player*> players;
             map->DoForAllPlayers([&players](Player* player) { players.push_back(player); });
             for (Player* a : players)

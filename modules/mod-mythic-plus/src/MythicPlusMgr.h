@@ -15,8 +15,7 @@
 #include <vector>
 
 class ChatHandler;
-class WorldPacket;
-class WorldSession;
+class ItemTemplate;
 class WorldPacket;
 class WorldSession;
 
@@ -32,6 +31,8 @@ public:
     bool StartRun(Player* player, std::string& error);
     bool TeleportToKey(Player* player, std::string& error);
     bool TryConsumeLfgPacket(WorldSession* session, WorldPacket const& packet);
+    bool TryConsumeItemQuery(WorldSession* session, WorldPacket const& packet);
+    void RefreshKeyItem(Player* player);
     void AbortTeleportCheck(ObjectGuid groupGuid, uint8 state);
     bool ClaimStarterKey(Player* player, std::string& error);
     bool ClaimVaultSlot(Player* player, uint8 slot, std::string& error);
@@ -72,9 +73,12 @@ public:
     void SendStatus(ChatHandler* handler, Player* player) const;
     std::vector<MythicLeaderboardRow> GetLeaderboard(uint32 limit = 15);
     static bool IsSpanish(Player const* player);
+    static char const* Text(Player const* player, char const* en, char const* es);
     static char const* AffixName(uint8 affix, bool spanish);
     static char const* AffixDesc(uint8 affix, bool spanish);
     static char const* DungeonName(uint8 dungeonId, bool spanish);
+    std::string KeystoneItemName(Player const* player);
+    std::string KeystoneItemDescription(Player const* player);
 
     static bool IsBoss(Creature const* creature);
     static bool IsEnemyForcesCreature(Creature const* creature);
@@ -95,7 +99,11 @@ private:
     void EnsureKeyItem(Player* player);
     void RemoveKeyItem(Player* player);
     void GiveItem(Player* player, uint32 itemId, uint32 count);
+    void SendCustomItemQuery(Player* player, uint32 itemId);
+    void BuildItemQueryPacket(WorldPacket& data, ItemTemplate const* proto, std::string const& name,
+        std::string const& description) const;
     void Announce(Map* map, std::string const& message) const;
+    void Announce(Map* map, std::string const& en, std::string const& es) const;
     void SendRunObjective(Player* player, MythicRun const& run) const;
     void SendRunObjective(Map* map, MythicRun const& run) const;
     void WriteLiveState(MythicRun const& run);

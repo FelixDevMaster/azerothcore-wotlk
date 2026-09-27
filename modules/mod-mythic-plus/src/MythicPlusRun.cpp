@@ -108,16 +108,16 @@ void MythicPlusMgr::SpawnSeasonal(Map* map, MythicRun& run, Player* source)
 
 bool MythicPlusMgr::StartRun(Player* player, std::string& error)
 {
-    if (!_enabled)
-    {
-        error = "Mythic+ is disabled.";
-        return false;
-    }
     if (!player)
         return false;
+    if (!_enabled)
+    {
+        error = Text(player, "Mythic+ is disabled.", "Las miticas estan desactivadas.");
+        return false;
+    }
     if (player->GetLevel() < _minLevel)
     {
-        error = IsSpanish(player) ? "Necesitas ser nivel 80." : "You must be level 80.";
+        error = Text(player, "You must be level 80.", "Necesitas ser nivel 80.");
         return false;
     }
 
@@ -132,7 +132,7 @@ bool MythicPlusMgr::StartRun(Player* player, std::string& error)
 
     if (GetRun(map->GetInstanceId()))
     {
-        error = IsSpanish(player) ? "Ya hay una mitica en curso." : "A mythic run is already active.";
+        error = Text(player, "A mythic run is already active.", "Ya hay una mitica en curso.");
         return false;
     }
 
@@ -141,7 +141,7 @@ bool MythicPlusMgr::StartRun(Player* player, std::string& error)
     MythicDungeonDef const* def = FindMythicDungeon(key.DungeonId);
     if (!def || !key.Level)
     {
-        error = IsSpanish(player) ? "No tienes piedra angular." : "You have no keystone.";
+        error = Text(player, "You have no keystone.", "No tienes piedra angular.");
         return false;
     }
     if (def->MapId != map->GetId())
@@ -219,9 +219,11 @@ void MythicPlusMgr::HandlePlayerDeath(Player* player)
     ++run->Deaths;
     run->ElapsedMs += _deathPenaltyMs;
     WriteLiveState(*run);
-    Announce(player->GetMap(), Acore::StringFormat(
-        "|cffff0000+{}s|r ({}) — {} deaths",
-        _deathPenaltyMs / 1000, player->GetName(), run->Deaths));
+    Announce(player->GetMap(),
+        Acore::StringFormat("|cffff0000+{}s|r ({}) — {} deaths",
+            _deathPenaltyMs / 1000, player->GetName(), run->Deaths),
+        Acore::StringFormat("|cffff0000+{}s|r ({}) — {} muertes",
+            _deathPenaltyMs / 1000, player->GetName(), run->Deaths));
 }
 
 void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* /*killer*/)
@@ -268,8 +270,9 @@ void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* /*killer*/)
     {
         run->DeadBosses.insert(creature->GetGUID());
         ++run->BossesKilled;
-        Announce(map, Acore::StringFormat("|cffffd100Boss {} / {}|r",
-            run->BossesKilled, run->BossesRequired));
+        Announce(map,
+            Acore::StringFormat("|cffffd100Boss {} / {}|r", run->BossesKilled, run->BossesRequired),
+            Acore::StringFormat("|cffffd100Jefe {} / {}|r", run->BossesKilled, run->BossesRequired));
         WriteLiveState(*run);
     }
     else if (IsEnemyForcesCreature(creature) && !run->CountedCreatures.count(creature->GetGUID()))
@@ -315,9 +318,13 @@ void MythicPlusMgr::UpdateRun(Map* map, uint32 diff)
     {
         run->AnnounceMs = 0;
         uint32 remain = run->TimeLimitMs > run->ElapsedMs ? run->TimeLimitMs - run->ElapsedMs : 0;
-        Announce(map, Acore::StringFormat("|cffffcc00{:02}:{:02}|r  forces {}/{}  bosses {}/{}  deaths {}",
-            remain / 60000, (remain / 1000) % 60, run->Forces, run->ForcesRequired,
-            run->BossesKilled, run->BossesRequired, run->Deaths));
+        Announce(map,
+            Acore::StringFormat("|cffffcc00{:02}:{:02}|r  forces {}/{}  bosses {}/{}  deaths {}",
+                remain / 60000, (remain / 1000) % 60, run->Forces, run->ForcesRequired,
+                run->BossesKilled, run->BossesRequired, run->Deaths),
+            Acore::StringFormat("|cffffcc00{:02}:{:02}|r  fuerzas {}/{}  jefes {}/{}  muertes {}",
+                remain / 60000, (remain / 1000) % 60, run->Forces, run->ForcesRequired,
+                run->BossesKilled, run->BossesRequired, run->Deaths));
     }
 
     run->LiveWriteMs += diff;
@@ -385,10 +392,15 @@ void MythicPlusMgr::CompleteRun(Map* map, MythicRun& run, bool timed)
     }
 
     ClearLiveState(run.InstanceId);
-    Announce(map, Acore::StringFormat(
-        timed ? "|cff00ff00Mythic +{} complete|r — key +{}  score {:.1f}"
-              : "|cffffff00Mythic +{} overtime|r — key unchanged  score {:.1f}",
-        run.Level, timed ? run.Upgrade : 0, score));
+    Announce(map,
+        Acore::StringFormat(
+            timed ? "|cff00ff00Mythic +{} complete|r — key +{}  score {:.1f}"
+                  : "|cffffff00Mythic +{} overtime|r — key unchanged  score {:.1f}",
+            run.Level, timed ? run.Upgrade : 0, score),
+        Acore::StringFormat(
+            timed ? "|cff00ff00Mitica +{} completada|r — piedra +{}  puntuacion {:.1f}"
+                  : "|cffffff00Mitica +{} fuera de tiempo|r — piedra sin cambios  puntuacion {:.1f}",
+            run.Level, timed ? run.Upgrade : 0, score));
 }
 
 void MythicPlusMgr::FailRun(MythicRun& run, bool abandon)
@@ -408,6 +420,9 @@ void MythicPlusMgr::FailRun(MythicRun& run, bool abandon)
         SaveProfile(run.LeaderGuid);
     }
 
+    if (Player* leader = ObjectAccessor::FindConnectedPlayer(run.LeaderGuid))
+        RefreshKeyItem(leader);
+
     ClearLiveState(run.InstanceId);
     if (abandon)
         LOG_INFO("module", "Mythic+ abandoned: +{} instance {}", run.Level, run.InstanceId);
@@ -420,7 +435,7 @@ bool MythicPlusMgr::ForceComplete(Player* player, std::string& error)
     MythicRun* run = GetRunForPlayer(player);
     if (!run || !run->Active)
     {
-        error = "No active mythic run.";
+        error = Text(player, "No active mythic run.", "No hay una mitica activa.");
         return false;
     }
     run->BossesKilled = run->BossesRequired;
@@ -440,7 +455,7 @@ void MythicPlusMgr::RewardRun(Player* player, MythicRun const& run, bool endChes
     if (endChest)
         ChatHandler(player->GetSession()).PSendSysMessage(
             es ? "Recompensa de +{} entregada." : "+{} end-of-run reward granted.", run.Level);
-    EnsureKeyItem(player);
+    RefreshKeyItem(player);
 }
 
 void MythicPlusMgr::RewardGear(Player* player, uint8 keyLevel, bool /*vault*/)
@@ -512,7 +527,7 @@ bool MythicPlusMgr::ClaimVaultSlot(Player* player, uint8 slot, std::string& erro
         return false;
     if (slot < 1 || slot > 3)
     {
-        error = "Vault slots are 1, 2 or 3.";
+        error = Text(player, "Vault slots are 1, 2 or 3.", "Las ranuras del cofre son 1, 2 o 3.");
         return false;
     }
 

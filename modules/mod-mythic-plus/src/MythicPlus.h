@@ -75,6 +75,9 @@ enum MythicNpcConst : uint32
     NPC_MYTHIC_VOLCANIC        = 190033,
     ITEM_MYTHIC_KEYSTONE       = 190022,
     ITEM_MYTHIC_RESIDUUM       = 190034,
+    // ItemDisplayInfo.dbc ids that already exist on the 3.3.5 client (no patch).
+    DISPLAY_MYTHIC_KEYSTONE    = 31029,  // Key to the Focusing Iris
+    DISPLAY_MYTHIC_RESIDUUM    = 56465,  // Abyss Crystal
     GO_MYTHIC_FONT             = 254620,
     NPC_TEXT_MYTHIC_BROKER     = 190020,
     GOSSIP_MENU_MYTHIC_BROKER  = 190020

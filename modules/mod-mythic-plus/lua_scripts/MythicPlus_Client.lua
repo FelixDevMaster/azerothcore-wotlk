@@ -42,11 +42,15 @@ local L = {
     HUD_BOSSES = "Bosses",
     HUD_DEATHS = "Deaths",
     HUD_OVERTIME = "Time expired",
-    SLASH = "/mplus  to toggle this window"
+    SLASH = "/mplus  to toggle this window",
+    SEASON = "Season",
+    WEEK = "week",
+    RUNS_SHORT = "runs"
 }
 
 if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.TITLE = "Piedra angular mitica"
+    L.SUB = "Battle for Azeroth"
     L.TAB_KEY = "Piedra"
     L.TAB_WEEK = "Semana"
     L.TAB_VAULT = "Cofre"
@@ -57,7 +61,7 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.KEY = "Piedra"
     L.SCORE = "Puntuacion"
     L.WEEK_BEST = "Mejor de la semana"
-    L.RUNS = "Runs esta semana"
+    L.RUNS = "Miticas esta semana"
     L.DEPLETED = "Agotada"
     L.NONE = "Sin piedra"
     L.AFFIX_10 = "+10 Temporada"
@@ -66,7 +70,7 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.CLAIMED = "Reclamada"
     L.LOCKED = "Bloqueada"
     L.NAME = "Nombre"
-    L.BOARD_SCORE = "Score"
+    L.BOARD_SCORE = "Puntuacion"
     L.BEST = "Mejor"
     L.EMPTY = "Todavia no hay puntuaciones."
     L.HUD_FORCES = "Fuerzas"
@@ -74,6 +78,9 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.HUD_DEATHS = "Muertes"
     L.HUD_OVERTIME = "Tiempo agotado"
     L.SLASH = "/mplus  para abrir esta ventana"
+    L.SEASON = "Temporada"
+    L.WEEK = "semana"
+    L.RUNS_SHORT = "miticas"
 end
 
 local AFFIX = {
@@ -270,12 +277,11 @@ local function Refresh()
 
     ClearLines()
     local p = state.profile or {}
-    local spanishHint = ES()
 
     if state.tab == TAB_KEY then
         lines[1]:SetTextColor(unpack(GOLD))
-        lines[1]:SetText(string.format("%s  —  %s %d  %s %d", L.TITLE, spanishHint and "Temporada" or "Season",
-            state.season or 1, spanishHint and "semana" or "week", state.week or 1))
+        lines[1]:SetText(string.format("%s  —  %s %d  %s %d", L.TITLE, L.SEASON,
+            state.season or 1, L.WEEK, state.week or 1))
         if (p.level or 0) > 0 then
             lines[3]:SetText(string.format("%s  +%d  %s%s", L.KEY, p.level, DungeonName(p.dungeonId),
                 (p.depleted or 0) > 0 and ("  (" .. L.DEPLETED .. ")") or ""))
@@ -295,8 +301,8 @@ local function Refresh()
         end
     elseif state.tab == TAB_WEEK then
         lines[1]:SetTextColor(unpack(GOLD))
-        lines[1]:SetText(string.format("%s %d  —  %s %d", spanishHint and "Semana" or "Week",
-            state.week or 1, spanishHint and "Temporada" or "Season", state.season or 1))
+        lines[1]:SetText(string.format("%s %d  —  %s %d", L.TAB_WEEK,
+            state.week or 1, L.SEASON, state.season or 1))
         local gates = { L.AFFIX_2, L.AFFIX_4, L.AFFIX_7, L.AFFIX_10 }
         for i = 1, 4 do
             lines[i + 2]:SetText(string.format("%s   %s", gates[i], AffixName(state.weekIds[i])))
@@ -313,7 +319,7 @@ local function Refresh()
             local key = (p.weekKeys and p.weekKeys[i]) or 0
             local status = claimed and L.CLAIMED or (((p.weekRuns or 0) >= need[i] and key > 0) and L.CLAIM_SLOT or L.LOCKED)
             lines[i + 2]:SetText(string.format("%s %d   +%d   (%d %s)   %s",
-                L.SLOT, i, key, need[i], spanishHint and "runs" or "runs", status))
+                L.SLOT, i, key, need[i], L.RUNS_SHORT, status))
         end
         startBtn:Hide()
         teleportBtn:Hide()

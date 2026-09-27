@@ -159,14 +159,15 @@ INSERT INTO `gameobject` (`guid`, `id`, `map`, `spawnMask`, `phaseMask`, `positi
 (5900224, 254620, 658, 3, 1, 435.743, 212.413, 528.709, 6.256, 0, 0, 0, 0, 300, 0, 1, '', 12340, 'M+ Font PoS'),
 (5900225, 254620, 668, 3, 1, 5239.010, 1932.640, 707.695, 0.801, 0, 0, 0, 0, 300, 0, 1, '', 12340, 'M+ Font HoR');
 
+-- displayid 31029 = Key to the Focusing Iris, 56465 = Abyss Crystal (stock 3.3.5 icons).
 INSERT INTO `item_template`
 (`entry`, `class`, `subclass`, `name`, `displayid`, `Quality`, `Flags`, `BuyCount`, `InventoryType`,
  `AllowableClass`, `AllowableRace`, `ItemLevel`, `RequiredLevel`, `maxcount`, `stackable`, `bonding`,
  `description`, `Material`, `sheath`, `RequiredDisenchantSkill`, `ScriptName`, `VerifiedBuild`) VALUES
-(190022, 15, 0, 'Mythic Keystone', 41193, 4, 0, 1, 0, -1, -1, 80, 80, 1, 1, 1,
+(190022, 15, 0, 'Mythic Keystone', 31029, 4, 0, 1, 0, -1, -1, 80, 80, 1, 1, 1,
     'Insert this keystone into the Font of Power at the dungeon entrance.', 4, 0, -1,
     'item_mythic_keystone', 12340),
-(190034, 15, 0, 'Echoes of Domination', 34186, 3, 0, 1, 0, -1, -1, 80, 0, 0, 200, 1,
+(190034, 15, 0, 'Echoes of Domination', 56465, 3, 0, 1, 0, -1, -1, 80, 0, 0, 200, 1,
     'Titan residue gathered from Mythic Keystone dungeons. Spend it at the Keystone Broker.', 4, 0, -1,
     '', 12340);
 

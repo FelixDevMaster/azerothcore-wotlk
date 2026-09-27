@@ -80,7 +80,7 @@ void BuildBrokerGossip(Player* player)
             MythicPlusMgr::AffixName(weekly.Seasonal, es)),
         GOSSIP_SENDER_MAIN, GOSSIP_MYTHIC_AFFIXES);
     AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-        Acore::StringFormat(es ? "Score: {:.1f}  mejor semana +{}"
+        Acore::StringFormat(es ? "Puntuacion: {:.1f}  mejor semana +{}"
                                : "Score: {:.1f}  week best +{}",
             profile.OverallScore, profile.WeekBestLevel),
         GOSSIP_SENDER_MAIN, GOSSIP_MYTHIC_SCORE);
@@ -140,7 +140,8 @@ void HandleBrokerSelect(Player* player, uint32 action)
             handler.SendSysMessage(es ? "Ranking de Miticas:" : "Mythic+ leaderboard:");
             for (MythicLeaderboardRow const& row : sMythicPlus->GetLeaderboard(10))
             {
-                handler.PSendSysMessage("{}. {} — {:.1f}  (week +{}, {} runs)",
+                handler.PSendSysMessage(es ? "{}. {} — {:.1f}  (semana +{}, {} runs)"
+                                           : "{}. {} — {:.1f}  (week +{}, {} runs)",
                     rank, row.Name, row.Score, row.WeekBest, row.Runs);
                 ++rank;
             }
@@ -226,6 +227,8 @@ public:
     bool CanPacketReceive(WorldSession* session, WorldPacket const& packet) override
     {
         if (sMythicPlus->TryConsumeLfgPacket(session, packet))
+            return false;
+        if (sMythicPlus->TryConsumeItemQuery(session, packet))
             return false;
         return true;
     }
@@ -512,15 +515,19 @@ public:
 
     static bool HandleTop(ChatHandler* handler)
     {
-        handler->SendSysMessage("Mythic+ leaderboard:");
+        Player* player = handler->GetPlayer();
+        bool const es = player && MythicPlusMgr::IsSpanish(player);
+        handler->SendSysMessage(es ? "Ranking de Miticas:" : "Mythic+ leaderboard:");
         uint32 rank = 1;
         for (MythicLeaderboardRow const& row : sMythicPlus->GetLeaderboard(15))
         {
-            handler->PSendSysMessage("{}. {} — {:.1f}  (week +{})", rank, row.Name, row.Score, row.WeekBest);
+            handler->PSendSysMessage(es ? "{}. {} — {:.1f}  (semana +{})"
+                                       : "{}. {} — {:.1f}  (week +{})",
+                rank, row.Name, row.Score, row.WeekBest);
             ++rank;
         }
         if (rank == 1)
-            handler->SendSysMessage("No scores yet.");
+            handler->SendSysMessage(es ? "Todavia no hay puntuaciones." : "No scores yet.");
         return true;
     }
 
@@ -536,7 +543,9 @@ public:
             handler->SetSentErrorMessage(true);
             return false;
         }
-        handler->PSendSysMessage("Keystone set: +{} dungeon {}", level.value_or(2), dungeonId);
+        bool const es = MythicPlusMgr::IsSpanish(player);
+        handler->PSendSysMessage(es ? "Piedra asignada: +{} {}" : "Keystone set: +{} {}",
+            level.value_or(2), MythicPlusMgr::DungeonName(dungeonId, es));
         return true;
     }
 

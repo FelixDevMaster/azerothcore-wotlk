@@ -536,7 +536,7 @@ bool MythicPlusMgr::TeleportGroup(MythicTeleportCheck const& check, std::string&
     MythicDungeonDef const* def = FindMythicDungeon(check.DungeonId);
     if (!def)
     {
-        error = "Unknown dungeon.";
+        error = Text(requester, "Unknown dungeon.", "Mazmorra desconocida.");
         return false;
     }
 
