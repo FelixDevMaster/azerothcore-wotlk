@@ -1,0 +1,79 @@
+#
+# Mythic+ (Battle for Azeroth rules) for AzerothCore 3.3.5a
+# Copy next to the other module configs or merge into worldserver.conf
+#
+
+###################################################################################################
+# MYTHIC PLUS
+#
+#    MythicPlus.Enable
+#        Description: Master switch. 0 disables starts; existing commands still print status.
+#        Default:     1
+#
+#    MythicPlus.Announce
+#        Description: Log run starts. In-instance raid warnings always fire.
+#        Default:     1
+#
+#    MythicPlus.AllowTeleport
+#        Description: Broker / .mplus teleport / AIO can port the group to the key dungeon.
+#        Default:     1
+#
+#    MythicPlus.MinLevel
+#        Description: Minimum player level to claim a key or start a run.
+#        Default:     80
+#
+#    MythicPlus.MinPlayers / MythicPlus.MaxPlayers
+#        Description: Party size required inside the instance when the key is inserted.
+#        Default:     1 / 5
+#
+#    MythicPlus.MaxKeyLevel
+#        Description: Hard cap for key upgrades (BFA went past 15; weekly chest still uses the key).
+#        Default:     25
+#
+#    MythicPlus.DeathPenaltyMs
+#        Description: Time added to the dungeon timer per player death (BFA: 5000).
+#        Default:     5000
+#
+#    MythicPlus.ScalePerLevel
+#        Description: Compounding enemy health/damage per key level (BFA: 0.08 = +8%).
+#        Default:     0.08
+#
+#    MythicPlus.ForcesPercent
+#        Description: Percent of counted trash required for Enemy Forces (100% of this target).
+#        Default:     80
+#
+#    MythicPlus.SeasonWeeks
+#        Description: Weeks in a season. After this many weekly resets the season increments
+#                     and the +10 seasonal affix rotates (Infested, Reaping, Beguiling, Awakened).
+#        Default:     12
+#
+#    MythicPlus.SeasonId
+#        Description: Force a season id (0 = use the value stored in mythic_state).
+#        Default:     0
+#
+#    MythicPlus.NPCEntry / KeystoneItem / FontEntry / ResiduumItem
+#        Description: Must match the world SQL. Residuum is the Titan Residuum analog.
+#        Defaults:    190020 / 190022 / 254620 / 190034
+#
+#    MythicPlus.AbandonMs
+#        Description: Fail the key if the instance stays empty this long.
+#        Default:     60000
+#
+
+MythicPlus.Enable = 1
+MythicPlus.Announce = 1
+MythicPlus.AllowTeleport = 1
+MythicPlus.MinLevel = 80
+MythicPlus.MinPlayers = 1
+MythicPlus.MaxPlayers = 5
+MythicPlus.MaxKeyLevel = 25
+MythicPlus.DeathPenaltyMs = 5000
+MythicPlus.ScalePerLevel = 0.08
+MythicPlus.ForcesPercent = 80
+MythicPlus.SeasonWeeks = 12
+MythicPlus.SeasonId = 0
+MythicPlus.NPCEntry = 190020
+MythicPlus.KeystoneItem = 190022
+MythicPlus.FontEntry = 254620
+MythicPlus.ResiduumItem = 190034
+MythicPlus.AbandonMs = 60000
