@@ -225,6 +225,17 @@ struct MythicLeaderboardRow
     uint32 Runs = 0;
 };
 
+struct MythicTeleportCheck
+{
+    ObjectGuid RequesterGuid;
+    ObjectGuid GroupGuid;
+    uint8 DungeonId = 0;
+    uint8 KeyLevel = 0;
+    uint32 LfgDungeonId = 0;
+    uint32 ExpireMs = 0;
+    std::unordered_map<ObjectGuid, uint8> Roles;
+};
+
 uint32 const MYTHIC_DUNGEON_COUNT = 16;
 
 MythicDungeonDef const MythicDungeons[MYTHIC_DUNGEON_COUNT] =

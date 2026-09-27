@@ -23,8 +23,19 @@
 #        Default:     80
 #
 #    MythicPlus.MinPlayers / MythicPlus.MaxPlayers
-#        Description: Party size required inside the instance when the key is inserted.
-#        Default:     1 / 5
+#        Description: Party size required to start a key. Ignored when RequireRoles = 1
+#                     (that path always needs exactly 5).
+#        Default:     5 / 5
+#
+#    MythicPlus.RequireRoles
+#        Description: Teleport and start require a full party of 5 (1 tank, 1 healer, 3 DPS).
+#                     Teleport opens the same Dungeon Finder role-check dialog as RDF.
+#                     Set to 0 only for solo testing.
+#        Default:     1
+#
+#    MythicPlus.RoleCheckMs
+#        Description: How long the RDF-style role check stays open before it fails.
+#        Default:     45000
 #
 #    MythicPlus.MaxKeyLevel
 #        Description: Hard cap for key upgrades (BFA went past 15; weekly chest still uses the key).
@@ -64,8 +75,10 @@ MythicPlus.Enable = 1
 MythicPlus.Announce = 1
 MythicPlus.AllowTeleport = 1
 MythicPlus.MinLevel = 80
-MythicPlus.MinPlayers = 1
+MythicPlus.MinPlayers = 5
 MythicPlus.MaxPlayers = 5
+MythicPlus.RequireRoles = 1
+MythicPlus.RoleCheckMs = 45000
 MythicPlus.MaxKeyLevel = 25
 MythicPlus.DeathPenaltyMs = 5000
 MythicPlus.ScalePerLevel = 0.08

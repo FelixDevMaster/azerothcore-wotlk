@@ -152,29 +152,21 @@ bool MythicPlusMgr::StartRun(Player* player, std::string& error)
         return false;
     }
 
-    Group* group = player->GetGroup();
     std::vector<Player*> members;
-    if (group)
-    {
-        group->DoForAllMembers([&members](Player* member)
-        {
-            members.push_back(member);
-        });
-    }
-    else
-        members.push_back(player);
-
-    if (members.size() < _minPlayers || members.size() > _maxPlayers)
-    {
-        error = Acore::StringFormat(
-            IsSpanish(player) ? "El grupo debe tener entre {} y {} jugadores."
-                              : "The group must have between {} and {} players.",
-            _minPlayers, _maxPlayers);
+    if (!CollectGroupMembers(player, members, error) || !ValidatePartySize(player, members, error))
         return false;
-    }
+    if (!ValidatePartyComposition(player, members, error))
+        return false;
 
     for (Player* member : members)
     {
+        if (member->GetLevel() < _minLevel)
+        {
+            error = Acore::StringFormat(
+                IsSpanish(player) ? "{} no es nivel {}." : "{} is not level {}.",
+                member->GetName(), _minLevel);
+            return false;
+        }
         if (!member->GetMap() || member->GetMap()->GetInstanceId() != map->GetInstanceId())
         {
             error = IsSpanish(player)
@@ -239,7 +231,7 @@ void MythicPlusMgr::HandlePlayerDeath(Player* player)
         _deathPenaltyMs / 1000, player->GetName(), run->Deaths));
 }
 
-void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* killer)
+void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* /*killer*/)
 {
     if (!unit || !unit->IsCreature())
         return;
@@ -254,20 +246,23 @@ void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* killer)
     {
         if (IsBoss(creature) && map->IsHeroic())
         {
-            if (Player* player = killer ? killer->GetCharmerOrOwnerPlayerOrPlayerItself() : nullptr)
+            bool allDead = true;
+            for (auto const& pair : map->GetCreatureBySpawnIdStore())
             {
-                bool allDead = true;
-                for (auto const& pair : map->GetCreatureBySpawnIdStore())
+                Creature* other = pair.second;
+                if (other && other->IsAlive() && IsBoss(other) && other != creature)
                 {
-                    Creature* other = pair.second;
-                    if (other && other->IsAlive() && IsBoss(other) && other != creature)
-                    {
-                        allDead = false;
-                        break;
-                    }
+                    allDead = false;
+                    break;
                 }
-                if (allDead)
-                    GrantM0Key(player, map->GetId());
+            }
+            if (allDead)
+            {
+                uint32 mapId = map->GetId();
+                map->DoForAllPlayers([this, mapId](Player* member)
+                {
+                    GrantM0Key(member, mapId);
+                });
             }
         }
         return;
@@ -364,10 +359,13 @@ void MythicPlusMgr::CompleteRun(Map* map, MythicRun& run, bool timed)
             profile.WeekBestDungeon = run.DungeonId;
         }
 
-        std::array<uint8, 3> keys = profile.WeekKeys;
-        keys[0] = std::max(keys[0], run.Level);
+        std::array<uint8, 4> keys = {
+            profile.WeekKeys[0], profile.WeekKeys[1], profile.WeekKeys[2], run.Level
+        };
         std::sort(keys.begin(), keys.end(), std::greater<uint8>());
-        profile.WeekKeys = keys;
+        profile.WeekKeys[0] = keys[0];
+        profile.WeekKeys[1] = keys[1];
+        profile.WeekKeys[2] = keys[2];
 
         if (guid == run.LeaderGuid)
         {

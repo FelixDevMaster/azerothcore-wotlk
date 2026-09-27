@@ -41,6 +41,7 @@ local L = {
     HUD_FORCES = "Forces",
     HUD_BOSSES = "Bosses",
     HUD_DEATHS = "Deaths",
+    HUD_OVERTIME = "Time expired",
     SLASH = "/mplus  to toggle this window"
 }
 
@@ -51,7 +52,7 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.TAB_VAULT = "Cofre"
     L.TAB_BOARD = "Ranking"
     L.START = "Insertar piedra"
-    L.TELEPORT = "Teleport"
+    L.TELEPORT = "Teletransportar"
     L.CLAIM = "Reclamar piedra +2"
     L.KEY = "Piedra"
     L.SCORE = "Puntuacion"
@@ -68,9 +69,10 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.BOARD_SCORE = "Score"
     L.BEST = "Mejor"
     L.EMPTY = "Todavia no hay puntuaciones."
-    L.HUD_FORCES = "Forces"
+    L.HUD_FORCES = "Fuerzas"
     L.HUD_BOSSES = "Jefes"
     L.HUD_DEATHS = "Muertes"
+    L.HUD_OVERTIME = "Tiempo agotado"
     L.SLASH = "/mplus  para abrir esta ventana"
 end
 
@@ -409,8 +411,14 @@ function Handlers.ShowBoard(_, rows)
 end
 
 local hud = CreateFrame("Frame", "ACMythicHud", UIParent)
-hud:SetSize(420, 86)
-hud:SetPoint("TOP", 0, -28)
+hud:SetSize(340, 154)
+hud:SetPoint("TOP", 0, -22)
+hud:SetFrameStrata("HIGH")
+hud:SetMovable(true)
+hud:EnableMouse(true)
+hud:RegisterForDrag("LeftButton")
+hud:SetScript("OnDragStart", hud.StartMoving)
+hud:SetScript("OnDragStop", hud.StopMovingOrSizing)
 hud:SetBackdrop({
     bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background-Dark",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -419,21 +427,60 @@ hud:SetBackdrop({
     edgeSize = 16,
     insets = { left = 4, right = 4, top = 4, bottom = 4 }
 })
-hud:SetBackdropColor(0.05, 0.04, 0.08, 0.85)
-hud:SetBackdropBorderColor(0.55, 0.35, 0.75, 0.9)
+hud:SetBackdropColor(0.04, 0.03, 0.07, 0.92)
+hud:SetBackdropBorderColor(0.72, 0.52, 0.18, 0.95)
 hud:Hide()
 
-local hudTitle = hud:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-hudTitle:SetPoint("TOP", 0, -10)
-hudTitle:SetTextColor(unpack(GOLD))
+local hudKey = hud:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+hudKey:SetPoint("TOPLEFT", 16, -12)
+hudKey:SetTextColor(unpack(GOLD))
+hudKey:SetJustifyH("LEFT")
+
+local hudDungeon = hud:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+hudDungeon:SetPoint("TOPLEFT", hudKey, "BOTTOMLEFT", 0, -3)
+hudDungeon:SetPoint("TOPRIGHT", -16, -28)
+hudDungeon:SetJustifyH("LEFT")
+hudDungeon:SetTextColor(unpack(CREAM))
 
 local hudTimer = hud:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
-hudTimer:SetPoint("TOP", hudTitle, "BOTTOM", 0, -4)
-hudTimer:SetTextColor(1, 0.9, 0.3)
+hudTimer:SetPoint("TOPRIGHT", -16, -12)
+hudTimer:SetTextColor(1, 0.86, 0.28)
 
-local hudInfo = hud:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-hudInfo:SetPoint("BOTTOM", 0, 10)
-hudInfo:SetTextColor(unpack(CREAM))
+local hudStatus = hud:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+hudStatus:SetPoint("TOPRIGHT", hudTimer, "BOTTOMRIGHT", 0, -2)
+hudStatus:SetJustifyH("RIGHT")
+
+local forceBar = CreateFrame("StatusBar", nil, hud)
+forceBar:SetSize(308, 16)
+forceBar:SetPoint("TOPLEFT", 16, -62)
+forceBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar")
+forceBar:SetStatusBarColor(0.55, 0.36, 0.82)
+forceBar:SetMinMaxValues(0, 1)
+forceBar:SetValue(0)
+
+local forceBg = forceBar:CreateTexture(nil, "BACKGROUND")
+forceBg:SetAllPoints()
+forceBg:SetTexture("Interface\\TargetingFrame\\UI-StatusBar")
+forceBg:SetVertexColor(0.12, 0.10, 0.16)
+
+local forceText = forceBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+forceText:SetPoint("CENTER")
+forceText:SetTextColor(1, 1, 1)
+
+local hudBosses = hud:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+hudBosses:SetPoint("TOPLEFT", forceBar, "BOTTOMLEFT", 0, -10)
+hudBosses:SetTextColor(unpack(CREAM))
+
+local hudDeaths = hud:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+hudDeaths:SetPoint("TOPRIGHT", forceBar, "BOTTOMRIGHT", 0, -10)
+hudDeaths:SetJustifyH("RIGHT")
+hudDeaths:SetTextColor(unpack(CREAM))
+
+local hudAffixes = hud:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+hudAffixes:SetPoint("BOTTOMLEFT", 16, 12)
+hudAffixes:SetPoint("BOTTOMRIGHT", -16, 12)
+hudAffixes:SetJustifyH("LEFT")
+hudAffixes:SetTextColor(0.82, 0.74, 0.55)
 
 local function FormatTime(ms)
     ms = math.max(0, ms or 0)
@@ -441,24 +488,64 @@ local function FormatTime(ms)
     return string.format("%02d:%02d", math.floor(total / 60), total % 60)
 end
 
+local function ActiveAffixes(ids)
+    local names = {}
+    if type(ids) ~= "table" then
+        return ""
+    end
+    for i = 1, #ids do
+        local id = ids[i] or 0
+        if id > 0 then
+            names[#names + 1] = AffixName(id)
+        end
+    end
+    return table.concat(names, "   ·   ")
+end
+
 function Handlers.ShowHud(_, live)
     if type(live) ~= "table" then
         return
     end
-    local remain = (live.limit or 0) - (live.elapsed or 0)
-    hudTitle:SetText(string.format("+%d  %s", live.level or 0, DungeonName(live.dungeonId)))
-    hudTimer:SetText(FormatTime(remain))
-    if remain <= 0 then
-        hudTimer:SetTextColor(1, 0.2, 0.2)
-    else
-        hudTimer:SetTextColor(1, 0.9, 0.3)
+    local elapsed = live.elapsed or 0
+    local limit = live.limit or 0
+    local remain = limit - elapsed
+    local forces = live.forces or 0
+    local forcesReq = math.max(1, live.forcesReq or 1)
+    local ratio = 0
+    if limit > 0 then
+        ratio = remain / limit
     end
-    hudInfo:SetText(string.format("%s %d/%d    %s %d/%d    %s %d    %s / %s / %s / %s",
-        L.HUD_FORCES, live.forces or 0, live.forcesReq or 0,
-        L.HUD_BOSSES, live.bosses or 0, live.bossesReq or 0,
-        L.HUD_DEATHS, live.deaths or 0,
-        AffixName(live.affixes and live.affixes[1]), AffixName(live.affixes and live.affixes[2]),
-        AffixName(live.affixes and live.affixes[3]), AffixName(live.affixes and live.affixes[4])))
+
+    hudKey:SetText(string.format("+%d", live.level or 0))
+    hudDungeon:SetText(DungeonName(live.dungeonId))
+
+    if remain <= 0 then
+        hudTimer:SetText("00:00")
+        hudTimer:SetTextColor(1, 0.18, 0.18)
+        hudStatus:SetText(L.HUD_OVERTIME)
+        hudStatus:SetTextColor(1, 0.28, 0.28)
+    else
+        hudTimer:SetText(FormatTime(remain))
+        hudStatus:SetText("")
+        if ratio >= 0.40 then
+            hudTimer:SetTextColor(0.35, 0.92, 0.40)
+        elseif ratio >= 0.20 then
+            hudTimer:SetTextColor(1, 0.78, 0.20)
+        else
+            hudTimer:SetTextColor(1, 0.42, 0.16)
+        end
+    end
+
+    forceBar:SetValue(math.min(1, forces / forcesReq))
+    if forces >= forcesReq then
+        forceBar:SetStatusBarColor(0.28, 0.78, 0.38)
+    else
+        forceBar:SetStatusBarColor(0.55, 0.36, 0.82)
+    end
+    forceText:SetText(string.format("%s   %d / %d", L.HUD_FORCES, forces, live.forcesReq or 0))
+    hudBosses:SetText(string.format("%s   %d / %d", L.HUD_BOSSES, live.bosses or 0, live.bossesReq or 0))
+    hudDeaths:SetText(string.format("%s   %d", L.HUD_DEATHS, live.deaths or 0))
+    hudAffixes:SetText(ActiveAffixes(live.affixes))
     hud:Show()
 end
 
@@ -469,14 +556,22 @@ end
 local ticker = CreateFrame("Frame")
 local acc = 0
 ticker:SetScript("OnUpdate", function(_, elapsed)
+    if not hud:IsShown() then
+        acc = 0
+        return
+    end
     acc = acc + elapsed
     if acc < 1 then
         return
     end
     acc = 0
-    if hud:IsShown() or (IsInInstance and IsInInstance()) then
-        AIO.Handle("MPLUS", "RequestHud")
-    end
+    AIO.Handle("MPLUS", "RequestHud")
+end)
+
+local zoneWatch = CreateFrame("Frame")
+zoneWatch:RegisterEvent("PLAYER_ENTERING_WORLD")
+zoneWatch:SetScript("OnEvent", function()
+    AIO.Handle("MPLUS", "RequestHud")
 end)
 
 SLASH_ACMPLUS1 = "/mplus"

@@ -23,6 +23,7 @@
 #include "Player.h"
 #include "StringFormat.h"
 #include "WorldSession.h"
+#include "LFGMgr.h"
 #include <algorithm>
 #include <cmath>
 
@@ -54,9 +55,11 @@ void MythicPlusMgr::LoadConfig(bool /*reload*/)
     _enabled = sConfigMgr->GetOption<bool>("MythicPlus.Enable", true);
     _announce = sConfigMgr->GetOption<bool>("MythicPlus.Announce", true);
     _allowTeleport = sConfigMgr->GetOption<bool>("MythicPlus.AllowTeleport", true);
+    _requireRoles = sConfigMgr->GetOption<bool>("MythicPlus.RequireRoles", true);
     _minLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MinLevel", 80));
-    _minPlayers = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MinPlayers", 1));
+    _minPlayers = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MinPlayers", 5));
     _maxPlayers = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MaxPlayers", 5));
+    _roleCheckMs = sConfigMgr->GetOption<uint32>("MythicPlus.RoleCheckMs", 45000);
     _maxKeyLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MaxKeyLevel", 25));
     _deathPenaltyMs = sConfigMgr->GetOption<uint32>("MythicPlus.DeathPenaltyMs", 5000);
     _scalePerLevel = sConfigMgr->GetOption<float>("MythicPlus.ScalePerLevel", 0.08f);
@@ -213,8 +216,9 @@ void MythicPlusMgr::CheckWeekReset()
     uint32 weeksPassed = (now - _weekStart) / (7 * DAY);
     _weekStart += weeksPassed * 7 * DAY;
     uint32 next = uint32(_weekIndex) + weeksPassed;
-    _seasonId += next / 12;
-    _weekIndex = static_cast<uint8>(next % 12);
+    uint32 weeks = _seasonWeeks ? _seasonWeeks : 12;
+    _seasonId += next / weeks;
+    _weekIndex = static_cast<uint8>(next % weeks);
 
     CharacterDatabase.Execute(
         "UPDATE character_mythic_profile SET week_best_level = 0, week_best_dungeon = 0, "
@@ -233,9 +237,11 @@ void MythicPlusMgr::Update(uint32 diff)
     if (_updateTimer < 500)
         return;
 
+    uint32 step = _updateTimer;
     _updateTimer = 0;
     CheckWeekReset();
     ProcessLuaRequests();
+    TickTeleportChecks(step);
 }
 
 void MythicPlusMgr::ProcessLuaRequests()
@@ -432,6 +438,10 @@ void MythicPlusMgr::HandleLogin(Player* player)
 
 void MythicPlusMgr::HandleLogout(ObjectGuid guid)
 {
+    auto it = _playerTeleportCheck.find(guid);
+    if (it != _playerTeleportCheck.end())
+        FinishTeleportCheck(it->second, lfg::LFG_ROLECHECK_ABORTED);
+
     SaveProfile(guid);
     _profiles.erase(guid);
 }
@@ -650,7 +660,7 @@ bool MythicPlusMgr::IsEnemyForcesCreature(Creature const* creature)
     uint32 type = creature->GetCreatureType();
     if (type == CREATURE_TYPE_CRITTER || type == CREATURE_TYPE_TOTEM || type == CREATURE_TYPE_NON_COMBAT_PET)
         return false;
-    return creature->IsHostileToPlayers() || creature->GetFaction() > 1;
+    return creature->IsHostileToPlayers();
 }
 
 uint32 MythicPlusMgr::ForceValue(Creature const* creature)

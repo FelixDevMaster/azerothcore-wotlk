@@ -82,8 +82,11 @@ Character tables are created automatically on startup. `data/sql/characters/` is
 Talk to the **Keystone Broker** (Dalaran, Stormwind, Orgrimmar, Argent Tournament) or use `.mplus`.
 
 1. Claim a +2 key (or finish any pool heroic).
-2. `.mplus teleport` or the AIO button ports the group to the key dungeon on **heroic**.
-3. Use the **Font of Power** at the entrance (or `.mplus start`) to insert the key.
+2. `.mplus teleport` or the AIO button starts the same **Dungeon Finder role check** as RDF.
+   The group must be **5 players** with **1 tank / 1 healer / 3 DPS**. Everyone has to confirm
+   a valid role; only then is the whole party ported to the key dungeon on **heroic**.
+3. Use the **Font of Power** at the entrance (or `.mplus start`) to insert the key. The same
+   5-man composition is required inside the instance.
 4. Kill every dungeon boss and fill Enemy Forces before the timer.
 5. Claim vault slots at the broker once per week.
 
@@ -95,7 +98,7 @@ GM: `.mplus setkey <dungeon 1-16> [level]` and `.mplus complete`.
 
 See `conf/mythic_plus.conf.dist`.
 
-- `MythicPlus.MinPlayers = 1` — leave at 1 to test alone; set to 5 for a live realm.
+- `MythicPlus.MinPlayers = 5` / `MythicPlus.RequireRoles = 1` — live realms need a full 1/1/3 party. Set `RequireRoles = 0` and `MinPlayers = 1` only to test alone.
 - `MythicPlus.MaxKeyLevel = 25`
 - `MythicPlus.ScalePerLevel = 0.08`
 - `MythicPlus.ForcesPercent = 80`

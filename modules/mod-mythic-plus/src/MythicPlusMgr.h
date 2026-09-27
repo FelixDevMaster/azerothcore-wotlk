@@ -12,8 +12,13 @@
 
 #include "MythicPlus.h"
 #include <string>
+#include <vector>
 
 class ChatHandler;
+class WorldPacket;
+class WorldSession;
+class WorldPacket;
+class WorldSession;
 
 class MythicPlusMgr
 {
@@ -26,6 +31,8 @@ public:
 
     bool StartRun(Player* player, std::string& error);
     bool TeleportToKey(Player* player, std::string& error);
+    bool TryConsumeLfgPacket(WorldSession* session, WorldPacket const& packet);
+    void AbortTeleportCheck(ObjectGuid groupGuid, uint8 state);
     bool ClaimStarterKey(Player* player, std::string& error);
     bool ClaimVaultSlot(Player* player, uint8 slot, std::string& error);
     bool SetKey(Player* player, uint8 dungeonId, uint8 level, std::string& error);
@@ -33,6 +40,7 @@ public:
 
     void HandleLogin(Player* player);
     void HandleLogout(ObjectGuid guid);
+    void HandleGroupMemberRemoved(ObjectGuid groupGuid);
     void HandlePlayerDeath(Player* player);
     void HandlePlayerEnter(Map* map, Player* player);
     void HandlePlayerLeave(Map* map, Player* player);
@@ -109,12 +117,30 @@ private:
     static uint32 ForceValue(Creature const* creature);
     static uint64 CrowdControlMask();
 
+    bool CollectGroupMembers(Player* player, std::vector<Player*>& members, std::string& error) const;
+    bool ValidatePartySize(Player* player, std::vector<Player*> const& members, std::string& error) const;
+    bool ValidatePartyComposition(Player* reporter, std::vector<Player*> const& members,
+        std::string& error) const;
+    bool PlayerReadyForTeleport(Player* player, std::string& error) const;
+    bool CanPlayerPerformRole(Player* player, uint8 role) const;
+    bool IsInTeleportCheck(ObjectGuid guid) const;
+    uint32 FindHeroicLfgDungeon(uint32 mapId) const;
+    void TickTeleportChecks(uint32 diff);
+    void HandleTeleportSetRoles(Player* player, uint8 roles);
+    void HandleTeleportLeave(Player* player);
+    void BroadcastRoleCheck(MythicTeleportCheck const& check, uint8 state, bool sendPartyUpdate,
+        ObjectGuid chosenGuid = ObjectGuid::Empty, uint8 chosenRoles = 0) const;
+    void FinishTeleportCheck(ObjectGuid groupGuid, uint8 state);
+    bool TeleportGroup(MythicTeleportCheck const& check, std::string& error);
+
     bool _enabled = true;
     bool _announce = true;
     bool _allowTeleport = true;
+    bool _requireRoles = true;
     uint8 _minLevel = 80;
-    uint8 _minPlayers = 1;
+    uint8 _minPlayers = 5;
     uint8 _maxPlayers = 5;
+    uint32 _roleCheckMs = 45000;
     uint8 _maxKeyLevel = 25;
     uint32 _deathPenaltyMs = 5000;
     float _scalePerLevel = 0.08f;
@@ -134,6 +160,8 @@ private:
     std::unordered_map<uint32, MythicRun> _runs;
     std::unordered_map<ObjectGuid, uint32> _playerRun;
     std::unordered_map<ObjectGuid, MythicProfile> _profiles;
+    std::unordered_map<ObjectGuid, MythicTeleportCheck> _teleportChecks;
+    std::unordered_map<ObjectGuid, ObjectGuid> _playerTeleportCheck;
 };
 
 #define sMythicPlus MythicPlusMgr::instance()

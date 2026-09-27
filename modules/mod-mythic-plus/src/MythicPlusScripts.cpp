@@ -12,12 +12,17 @@
 #include "CommandScript.h"
 #include "Creature.h"
 #include "GameObject.h"
+#include "Group.h"
+#include "GroupScript.h"
 #include "Item.h"
 #include "Optional.h"
 #include "Player.h"
 #include "ScriptedGossip.h"
 #include "ScriptMgr.h"
+#include "ServerScript.h"
 #include "StringFormat.h"
+#include "WorldPacket.h"
+#include "WorldSession.h"
 
 using namespace Acore::ChatCommands;
 
@@ -208,6 +213,43 @@ public:
     void OnDestroyMap(Map* map) override
     {
         sMythicPlus->DestroyMap(map);
+    }
+};
+
+class MythicPlusServerScript : public ServerScript
+{
+public:
+    MythicPlusServerScript() : ServerScript("MythicPlusServerScript", {
+        SERVERHOOK_CAN_PACKET_RECEIVE
+    }) { }
+
+    bool CanPacketReceive(WorldSession* session, WorldPacket const& packet) override
+    {
+        if (sMythicPlus->TryConsumeLfgPacket(session, packet))
+            return false;
+        return true;
+    }
+};
+
+class MythicPlusGroupScript : public GroupScript
+{
+public:
+    MythicPlusGroupScript() : GroupScript("MythicPlusGroupScript", {
+        GROUPHOOK_ON_REMOVE_MEMBER,
+        GROUPHOOK_ON_DISBAND
+    }) { }
+
+    void OnRemoveMember(Group* group, ObjectGuid /*guid*/, RemoveMethod /*method*/,
+        ObjectGuid /*kicker*/, char const* /*reason*/) override
+    {
+        if (group)
+            sMythicPlus->HandleGroupMemberRemoved(group->GetGUID());
+    }
+
+    void OnDisband(Group* group) override
+    {
+        if (group)
+            sMythicPlus->HandleGroupMemberRemoved(group->GetGUID());
     }
 };
 
@@ -519,6 +561,8 @@ void AddSC_mythic_plus()
     new MythicPlusWorldScript();
     new MythicPlusMapScript();
     new MythicPlusPlayerScript();
+    new MythicPlusServerScript();
+    new MythicPlusGroupScript();
     new MythicPlusCreatureScript();
     new MythicPlusUnitScript();
     new npc_mythic_broker();
