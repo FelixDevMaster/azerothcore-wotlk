@@ -350,6 +350,7 @@ end
 
 startBtn:SetScript("OnClick", function()
     AIO.Handle("MPLUS", "Start")
+    AIO.Handle("MPLUS", "RequestHud")
 end)
 teleportBtn:SetScript("OnClick", function()
     AIO.Handle("MPLUS", "Teleport")
@@ -553,19 +554,25 @@ function Handlers.HideHud()
     hud:Hide()
 end
 
+local function InPartyInstance()
+    if not IsInInstance then
+        return false
+    end
+    local inside, kind = IsInInstance()
+    return inside and kind == "party"
+end
+
 local ticker = CreateFrame("Frame")
 local acc = 0
 ticker:SetScript("OnUpdate", function(_, elapsed)
-    if not hud:IsShown() then
-        acc = 0
-        return
-    end
     acc = acc + elapsed
     if acc < 1 then
         return
     end
     acc = 0
-    AIO.Handle("MPLUS", "RequestHud")
+    if hud:IsShown() or InPartyInstance() then
+        AIO.Handle("MPLUS", "RequestHud")
+    end
 end)
 
 local zoneWatch = CreateFrame("Frame")

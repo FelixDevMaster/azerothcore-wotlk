@@ -200,15 +200,7 @@ bool MythicPlusMgr::StartRun(Player* player, std::string& error)
             "REPLACE INTO mythic_run_member (guid, instance_id) VALUES ({}, {})",
             guid.GetCounter(), stored.InstanceId);
 
-    bool const es = IsSpanish(player);
-    std::string affixLine = Acore::StringFormat("{} / {} / {} / {}",
-        AffixName(stored.Affixes.FortTyr, es), AffixName(stored.Affixes.Plus4, es),
-        AffixName(stored.Affixes.Plus7, es), AffixName(stored.Affixes.Seasonal, es));
-    Announce(map, Acore::StringFormat(
-        es ? "|cffff6600Mitica +{} {}|r — {}. Timer {:02}:00. Forces {}."
-           : "|cffff6600Mythic +{} {}|r — {}. Timer {:02}:00. Forces {}.",
-        stored.Level, DungeonName(stored.DungeonId, es), affixLine,
-        stored.TimeLimitMs / 60000, stored.ForcesRequired));
+    SendRunObjective(map, stored);
 
     if (_announce)
         LOG_INFO("module", "Mythic+ start: +{} {} instance {} by {}",
@@ -226,6 +218,7 @@ void MythicPlusMgr::HandlePlayerDeath(Player* player)
 
     ++run->Deaths;
     run->ElapsedMs += _deathPenaltyMs;
+    WriteLiveState(*run);
     Announce(player->GetMap(), Acore::StringFormat(
         "|cffff0000+{}s|r ({}) — {} deaths",
         _deathPenaltyMs / 1000, player->GetName(), run->Deaths));
@@ -277,6 +270,7 @@ void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* /*killer*/)
         ++run->BossesKilled;
         Announce(map, Acore::StringFormat("|cffffd100Boss {} / {}|r",
             run->BossesKilled, run->BossesRequired));
+        WriteLiveState(*run);
     }
     else if (IsEnemyForcesCreature(creature) && !run->CountedCreatures.count(creature->GetGUID()))
     {
@@ -285,6 +279,7 @@ void MythicPlusMgr::HandleUnitDeath(Unit* unit, Unit* /*killer*/)
         if (run->HasAffix(AFFIX_REAPING))
             ++run->ReapingKills;
         ApplyAffixDeath(map, *run, creature);
+        WriteLiveState(*run);
     }
 
     if (run->BossesKilled >= run->BossesRequired && run->Forces >= run->ForcesRequired)

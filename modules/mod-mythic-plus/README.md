@@ -101,5 +101,5 @@ See `conf/mythic_plus.conf.dist`.
 - `MythicPlus.MinPlayers = 5` / `MythicPlus.RequireRoles = 1` — live realms need a full 1/1/3 party. Set `RequireRoles = 0` and `MinPlayers = 1` only to test alone.
 - `MythicPlus.MaxKeyLevel = 25`
 - `MythicPlus.ScalePerLevel = 0.08`
-- `MythicPlus.ForcesPercent = 80`
+- `MythicPlus.ForcesPercent = 70` — complete the key after 70% of counted trash, not a full clear.
 - `MythicPlus.SeasonId = 0` — 0 reads `mythic_state`; 1–4 force Infested/Reaping/Beguiling/Awakened.

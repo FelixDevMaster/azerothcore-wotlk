@@ -50,8 +50,8 @@
 #        Default:     0.08
 #
 #    MythicPlus.ForcesPercent
-#        Description: Percent of counted trash required for Enemy Forces (100% of this target).
-#        Default:     80
+#        Description: Percent of counted trash required for Enemy Forces.
+#        Default:     70
 #
 #    MythicPlus.SeasonWeeks
 #        Description: Weeks in a season. After this many weekly resets the season increments
@@ -82,7 +82,7 @@ MythicPlus.RoleCheckMs = 45000
 MythicPlus.MaxKeyLevel = 25
 MythicPlus.DeathPenaltyMs = 5000
 MythicPlus.ScalePerLevel = 0.08
-MythicPlus.ForcesPercent = 80
+MythicPlus.ForcesPercent = 70
 MythicPlus.SeasonWeeks = 12
 MythicPlus.SeasonId = 0
 MythicPlus.NPCEntry = 190020

@@ -96,6 +96,8 @@ private:
     void RemoveKeyItem(Player* player);
     void GiveItem(Player* player, uint32 itemId, uint32 count);
     void Announce(Map* map, std::string const& message) const;
+    void SendRunObjective(Player* player, MythicRun const& run) const;
+    void SendRunObjective(Map* map, MythicRun const& run) const;
     void WriteLiveState(MythicRun const& run);
     void ClearLiveState(uint32 instanceId);
     void ScaleCreature(Creature* creature, MythicRun& run);

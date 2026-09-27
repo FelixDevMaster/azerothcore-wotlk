@@ -63,7 +63,7 @@ void MythicPlusMgr::LoadConfig(bool /*reload*/)
     _maxKeyLevel = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.MaxKeyLevel", 25));
     _deathPenaltyMs = sConfigMgr->GetOption<uint32>("MythicPlus.DeathPenaltyMs", 5000);
     _scalePerLevel = sConfigMgr->GetOption<float>("MythicPlus.ScalePerLevel", 0.08f);
-    _forcesPercent = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.ForcesPercent", 80));
+    _forcesPercent = static_cast<uint8>(sConfigMgr->GetOption<uint32>("MythicPlus.ForcesPercent", 70));
     _seasonWeeks = sConfigMgr->GetOption<uint32>("MythicPlus.SeasonWeeks", 12);
     _npcEntry = sConfigMgr->GetOption<uint32>("MythicPlus.NPCEntry", NPC_MYTHIC_BROKER);
     _keystoneItem = sConfigMgr->GetOption<uint32>("MythicPlus.KeystoneItem", ITEM_MYTHIC_KEYSTONE);
@@ -548,6 +548,7 @@ void MythicPlusMgr::HandlePlayerEnter(Map* map, Player* player)
             CharacterDatabase.Execute(
                 "REPLACE INTO mythic_run_member (guid, instance_id) VALUES ({}, {})",
                 player->GetGUID().GetCounter(), instanceId);
+            SendRunObjective(player, *run);
         }
         return;
     }
@@ -617,8 +618,9 @@ bool MythicPlusMgr::IsBoss(Creature const* creature)
 
 bool MythicPlusMgr::IsEnemyForcesCreature(Creature const* creature)
 {
-    if (!creature || !creature->IsAlive())
+    if (!creature)
         return false;
+    // OnUnitDeath runs after the NPC is already dead; do not require IsAlive().
     if (creature->IsTrigger() || creature->IsCivilian() || creature->IsCritter())
         return false;
     if (creature->IsPet() || creature->IsSummon())
@@ -859,6 +861,49 @@ void MythicPlusMgr::Announce(Map* map, std::string const& message) const
     map->DoForAllPlayers([&message](Player* player)
     {
         ChatHandler(player->GetSession()).SendSysMessage(message);
+    });
+}
+
+void MythicPlusMgr::SendRunObjective(Player* player, MythicRun const& run) const
+{
+    if (!player || !player->GetSession())
+        return;
+
+    bool const es = IsSpanish(player);
+    std::string affixes;
+    uint8 const ids[4] = {
+        run.Affixes.FortTyr, run.Affixes.Plus4, run.Affixes.Plus7, run.Affixes.Seasonal
+    };
+    for (uint8 id : ids)
+    {
+        if (!id)
+            continue;
+        if (!affixes.empty())
+            affixes += " / ";
+        affixes += AffixName(id, es);
+    }
+    if (affixes.empty())
+        affixes = es ? "Ninguno" : "None";
+
+    std::string const line = Acore::StringFormat(
+        es ? "+{} {} | {} | {:02}:00 | Fuerzas {} | Jefes {}"
+           : "+{} {} | {} | {:02}:00 | Forces {} | Bosses {}",
+        run.Level, DungeonName(run.DungeonId, es), affixes,
+        run.TimeLimitMs / 60000, run.ForcesRequired, run.BossesRequired);
+
+    ChatHandler handler(player->GetSession());
+    handler.SendNotification("{}", line);
+    player->GetSession()->SendAreaTriggerMessage("{}", line);
+    handler.SendSysMessage(Acore::StringFormat("|cffff6600{}|r", line));
+}
+
+void MythicPlusMgr::SendRunObjective(Map* map, MythicRun const& run) const
+{
+    if (!map)
+        return;
+    map->DoForAllPlayers([this, &run](Player* player)
+    {
+        SendRunObjective(player, run);
     });
 }
 

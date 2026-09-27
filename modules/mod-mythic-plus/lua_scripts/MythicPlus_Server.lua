@@ -139,8 +139,34 @@ function Handlers.RequestHud(player)
     AIO.Handle(player, "MPLUS", "ShowHud", live)
 end
 
+local function PushHudToLiveMembers()
+    local q = CharDBQuery(
+        "SELECT m.guid FROM mythic_run_member m INNER JOIN mythic_run_live l "
+            .. "ON l.instance_id = m.instance_id WHERE l.active = 1")
+    if not q then
+        return
+    end
+    local wanted = {}
+    repeat
+        wanted[q:GetUInt32(0)] = true
+    until not q:NextRow()
+    if not GetPlayersInWorld then
+        return
+    end
+    for _, player in pairs(GetPlayersInWorld()) do
+        if player and wanted[GuidLow(player)] then
+            Handlers.RequestHud(player)
+        end
+    end
+end
+
 function Handlers.Start(player)
     PushRequest(player, ACTION_START, 0)
+    if CreateLuaEvent then
+        CreateLuaEvent(function()
+            Handlers.RequestHud(player)
+        end, 700, 4)
+    end
 end
 
 function Handlers.Teleport(player)
@@ -157,6 +183,10 @@ function Handlers.ClaimVault(player, slot)
         return
     end
     PushRequest(player, ACTION_VAULT, slot)
+end
+
+if CreateLuaEvent then
+    CreateLuaEvent(PushHudToLiveMembers, 1000, 0)
 end
 
 print("[Mythic+] AIO server handlers loaded.")
