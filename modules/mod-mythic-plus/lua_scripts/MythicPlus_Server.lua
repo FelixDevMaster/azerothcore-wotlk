@@ -18,15 +18,54 @@ local ACTION_TELEPORT = 3
 local ACTION_CLAIM = 4
 
 local function GuidLow(player)
-    return player:GetGUIDLow()
+    if not player then
+        return nil
+    end
+    local ok, low = pcall(player.GetGUIDLow, player)
+    if ok and type(low) == "number" and low > 0 then
+        return low
+    end
+    return nil
+end
+
+local function FindPlayerByLow(low)
+    if not low or not GetPlayersInWorld then
+        return nil
+    end
+    for _, candidate in pairs(GetPlayersInWorld()) do
+        if GuidLow(candidate) == low then
+            return candidate
+        end
+    end
+    return nil
+end
+
+local function Later(guidLow, repeats, fn)
+    if not guidLow or not CreateLuaEvent then
+        return
+    end
+    CreateLuaEvent(function()
+        local player = FindPlayerByLow(guidLow)
+        if player then
+            fn(player)
+        end
+    end, 700, repeats or 1)
 end
 
 local function LoadProfile(player)
+    local guid = GuidLow(player)
+    if not guid then
+        return {
+            dungeonId = 0, level = 0, depleted = 0, score = 0,
+            weekBest = 0, weekDungeon = 0, weekRuns = 0, vault = 0,
+            weekKeys = { 0, 0, 0 }, vaultItems = { 0, 0, 0 }, seasonId = 1
+        }
+    end
     local q = CharDBQuery(string.format(
         "SELECT dungeon_id, key_level, depleted, overall_score, week_best_level, "
             .. "week_best_dungeon, week_runs, vault_claimed, week_key1, week_key2, week_key3, season_id, "
             .. "vault_item1, vault_item2, vault_item3 "
-            .. "FROM character_mythic_profile WHERE guid = %d", GuidLow(player)))
+            .. "FROM character_mythic_profile WHERE guid = %d", guid)))
     if not q then
         return {
             dungeonId = 0, level = 0, depleted = 0, score = 0,
@@ -58,11 +97,15 @@ local function LoadState()
 end
 
 local function LoadLive(player)
+    local guid = GuidLow(player)
+    if not guid then
+        return nil
+    end
     local q = CharDBQuery(string.format(
         "SELECT l.dungeon_id, l.level, l.affix0, l.affix1, l.affix2, l.affix3, "
             .. "l.elapsed_ms, l.limit_ms, l.deaths, l.forces, l.forces_req, l.bosses, l.bosses_req, l.active "
             .. "FROM mythic_run_member m INNER JOIN mythic_run_live l ON l.instance_id = m.instance_id "
-            .. "WHERE m.guid = %d", GuidLow(player)))
+            .. "WHERE m.guid = %d", guid)))
     if not q then
         return nil
     end
@@ -82,13 +125,20 @@ local function LoadLive(player)
 end
 
 local function PushRequest(player, action, extra)
+    local guid = GuidLow(player)
+    if not guid then
+        return
+    end
     CharDBExecute(string.format(
         "REPLACE INTO mythic_request (guid, action, extra, created_at) "
             .. "VALUES (%d, %d, %d, UNIX_TIMESTAMP())",
-        GuidLow(player), action, extra or 0))
+        guid, action, extra or 0))
 end
 
 function Handlers.RequestOpen(player)
+    if not GuidLow(player) then
+        return
+    end
     AIO.Handle(player, "MPLUS", "ShowUI", {
         season = LoadState().season,
         week = LoadState().week,
@@ -97,6 +147,9 @@ function Handlers.RequestOpen(player)
 end
 
 function Handlers.RequestWeek(player)
+    if not GuidLow(player) then
+        return
+    end
     local st = LoadState()
     local rotation = {
         { 1, 3, 4 }, { 2, 5, 10 }, { 1, 6, 16 }, { 2, 4, 11 },
@@ -114,6 +167,9 @@ function Handlers.RequestWeek(player)
 end
 
 function Handlers.RequestBoard(player)
+    if not GuidLow(player) then
+        return
+    end
     local rows = {}
     local q = CharDBQuery(
         "SELECT c.name, p.overall_score, p.week_best_level, p.week_runs "
@@ -133,6 +189,9 @@ function Handlers.RequestBoard(player)
 end
 
 function Handlers.RequestHud(player)
+    if not GuidLow(player) then
+        return
+    end
     local live = LoadLive(player)
     if not live or live.active == 0 then
         AIO.Handle(player, "MPLUS", "HideHud")
@@ -156,19 +215,19 @@ local function PushHudToLiveMembers()
         return
     end
     for _, player in pairs(GetPlayersInWorld()) do
-        if player and wanted[GuidLow(player)] then
+        local id = GuidLow(player)
+        if id and wanted[id] then
             Handlers.RequestHud(player)
         end
     end
 end
 
 function Handlers.Start(player)
+    local guid = GuidLow(player)
     PushRequest(player, ACTION_START, 0)
-    if CreateLuaEvent then
-        CreateLuaEvent(function()
-            Handlers.RequestHud(player)
-        end, 700, 4)
-    end
+    Later(guid, 4, function(resolved)
+        Handlers.RequestHud(resolved)
+    end)
 end
 
 function Handlers.Teleport(player)
@@ -184,12 +243,11 @@ function Handlers.ClaimVault(player, slot)
     if slot < 1 or slot > 3 then
         return
     end
+    local guid = GuidLow(player)
     PushRequest(player, ACTION_VAULT, slot)
-    if CreateLuaEvent then
-        CreateLuaEvent(function()
-            Handlers.RequestOpen(player)
-        end, 700, 2)
-    end
+    Later(guid, 2, function(resolved)
+        Handlers.RequestOpen(resolved)
+    end)
 end
 
 if CreateLuaEvent then
