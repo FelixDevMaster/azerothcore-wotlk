@@ -17,13 +17,51 @@ local ACTION_VAULT = 2
 local ACTION_TELEPORT = 3
 local ACTION_CLAIM = 4
 
+local function ToGuidLow(value)
+    if type(value) == "number" then
+        return value > 0 and value or nil
+    end
+    if type(value) == "string" then
+        local n = tonumber(value)
+        return n and n > 0 and n or nil
+    end
+    if type(value) == "userdata" then
+        local ok, counter = pcall(function()
+            if value.GetCounter then
+                return value:GetCounter()
+            end
+        end)
+        if ok then
+            return ToGuidLow(counter)
+        end
+    end
+    return nil
+end
+
 local function GuidLow(player)
     if not player then
         return nil
     end
-    local ok, low = pcall(player.GetGUIDLow, player)
-    if ok and type(low) == "number" and low > 0 then
-        return low
+    local attempts = {
+        function()
+            return player:GetGUIDLow()
+        end,
+        function()
+            local guid = player:GetGUID()
+            if type(guid) == "userdata" and guid.GetCounter then
+                return guid:GetCounter()
+            end
+            return guid
+        end
+    }
+    for i = 1, #attempts do
+        local ok, value = pcall(attempts[i])
+        if ok then
+            local low = ToGuidLow(value)
+            if low then
+                return low
+            end
+        end
     end
     return nil
 end
@@ -136,20 +174,15 @@ local function PushRequest(player, action, extra)
 end
 
 function Handlers.RequestOpen(player)
-    if not GuidLow(player) then
-        return
-    end
+    local st = LoadState()
     AIO.Handle(player, "MPLUS", "ShowUI", {
-        season = LoadState().season,
-        week = LoadState().week,
+        season = st.season,
+        week = st.week,
         profile = LoadProfile(player)
     })
 end
 
 function Handlers.RequestWeek(player)
-    if not GuidLow(player) then
-        return
-    end
     local st = LoadState()
     local rotation = {
         { 1, 3, 4 }, { 2, 5, 10 }, { 1, 6, 16 }, { 2, 4, 11 },
@@ -167,9 +200,6 @@ function Handlers.RequestWeek(player)
 end
 
 function Handlers.RequestBoard(player)
-    if not GuidLow(player) then
-        return
-    end
     local rows = {}
     local q = CharDBQuery(
         "SELECT c.name, p.overall_score, p.week_best_level, p.week_runs "
