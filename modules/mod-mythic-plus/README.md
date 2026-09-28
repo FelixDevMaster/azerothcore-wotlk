@@ -40,12 +40,14 @@ Utgarde Keep, The Nexus, Azjol-Nerub, Ahn'kahet, Drak'Tharon Keep, Gundrak, Hall
 
 Each timed/overtime run writes a score (`25 + 5×level`, with +1/+2/+3 time bonuses or an overtime penalty). Fortified and Tyrannical bests are stored per dungeon. Overall score is `1.5×higher + 0.5×lower` per dungeon, then summed.
 
-Weekly vault (BfA-style, one claim per week):
+Weekly vault (BfA-style, **one claim per week**):
 
+- Resets **Friday 20:00** on the worldserver clock (`MythicPlus.ResetWday = 5`, `ResetHour = 20`).
 - Unlock it by completing at least one key that week. Item level follows your **highest** key.
-- The chest rolls **3 pieces for your class and spec** (armor type + primary stats; different slots when possible).
-- You **choose 1 of 3**. Residuum is 2× the highest key.
-- End-of-run loot is also spec-appropriate (one piece, no choice).
+- The chest rolls **3 pieces for your class and spec**. You pick **1 of 3**.
+- **NPC:** talking to the broker prints 3 clickable item links in chat — hover a link for the full tooltip (stats and effects), then click **Claim 1/2/3** in the gossip menu.
+- **`/mplus`:** the Vault tab shows three item cards with icons. Hover an icon for the native tooltip; click **Claim** on that card.
+- Residuum is 2× the highest key. End-of-run loot is also spec-appropriate (one piece, no choice).
 
 End-of-run and vault loot is existing WotLK gear + emblems, scaled by key level, plus **Echoes of Domination** (Titan Residuum analog, item `190034`).
 
@@ -93,7 +95,7 @@ Talk to the **Keystone Broker** (Dalaran, Stormwind, Orgrimmar, Argent Tournamen
 3. Use the **Font of Power** at the entrance (or `.mplus start`) to insert the key. The same
    5-man composition is required inside the instance.
 4. Kill every dungeon boss and fill Enemy Forces before the timer.
-5. Open the weekly vault at the broker or `.mplus vault` and pick **1 of 3** spec items.
+5. After a key, talk to the broker (chat links + gossip) or `/mplus` Vault tab (icons + tooltips) and pick **1 of 3**. Next claim is Friday 20:00.
 
 Commands: `.mplus status|key|week|start|teleport|vault [1-3]|top`
 

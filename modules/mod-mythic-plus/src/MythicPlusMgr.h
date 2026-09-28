@@ -38,7 +38,11 @@ public:
     bool ClaimStarterKey(Player* player, std::string& error);
     bool ClaimVaultSlot(Player* player, uint8 slot, std::string& error);
     void EnsureVaultChoices(Player* player);
+    void SendVaultPreview(Player* player);
+    [[nodiscard]] uint32 GetNextResetTime() const;
+    std::string FormatNextReset(Player const* player) const;
     static std::string LocalizedItemName(Player const* player, uint32 itemId);
+    static std::string ItemChatLink(Player const* player, uint32 itemId);
     bool SetKey(Player* player, uint8 dungeonId, uint8 level, std::string& error);
     bool ForceComplete(Player* player, std::string& error);
 
@@ -93,6 +97,8 @@ private:
 
     void ProcessLuaRequests();
     void CheckWeekReset();
+    [[nodiscard]] uint32 LastWeeklyReset(uint32 now) const;
+    [[nodiscard]] bool IsWeeklyResetAligned(uint32 timestamp) const;
     void LoadState();
     void SaveState();
     void LoadProfile(ObjectGuid guid);
@@ -169,6 +175,8 @@ private:
     uint32 _fontEntry = GO_MYTHIC_FONT;
     uint32 _residuumItem = ITEM_MYTHIC_RESIDUUM;
     uint32 _abandonMs = 60000;
+    uint8 _resetWday = 5;   // Friday (tm_wday)
+    uint8 _resetHour = 20;  // 20:00 server time
 
     uint32 _weekStart = 0;
     uint32 _seasonId = 1;

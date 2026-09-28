@@ -8,12 +8,15 @@
  */
 
 #include "MythicPlusMgr.h"
+#include "Chat.h"
 #include "ItemTemplate.h"
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "Random.h"
+#include "SharedDefines.h"
 #include "StringFormat.h"
 #include "WorldSession.h"
+#include <algorithm>
 #include <unordered_map>
 
 namespace
@@ -340,6 +343,49 @@ std::string MythicPlusMgr::LocalizedItemName(Player const* player, uint32 itemId
                 ObjectMgr::GetLocaleString(il->Name, loc, name);
     }
     return name;
+}
+
+std::string MythicPlusMgr::ItemChatLink(Player const* player, uint32 itemId)
+{
+    ItemTemplate const* proto = sObjectMgr->GetItemTemplate(itemId);
+    if (!proto)
+        return Acore::StringFormat("#{}", itemId);
+
+    uint32 color = ItemQualityColors[proto->Quality < MAX_ITEM_QUALITY ? proto->Quality : ITEM_QUALITY_COMMON];
+    return Acore::StringFormat("|c{:08x}|Hitem:{}:0:0:0:0:0:0:0:0:0|h[{}]|h|r",
+        color, itemId, LocalizedItemName(player, itemId));
+}
+
+void MythicPlusMgr::SendVaultPreview(Player* player)
+{
+    if (!player || !player->GetSession())
+        return;
+
+    EnsureVaultChoices(player);
+    MythicProfile profile = GetProfile(player->GetGUID());
+    bool const es = IsSpanish(player);
+    ChatHandler handler(player->GetSession());
+    handler.SendSysMessage(FormatNextReset(player));
+
+    if (profile.VaultClaimed)
+    {
+        handler.SendSysMessage(es ? "Ya reclamaste el cofre de esta semana."
+                                  : "You already claimed this week's vault.");
+        return;
+    }
+    if (!profile.WeekRuns)
+    {
+        handler.SendSysMessage(es ? "Completa una mitica esta semana para abrir el cofre."
+                                  : "Complete a key this week to unlock the vault.");
+        return;
+    }
+
+    handler.SendSysMessage(es
+        ? "Pasa el raton por estos enlaces para ver stats y efectos. Luego elige 1 en el NPC o /mplus."
+        : "Hover these links to see stats and effects. Then pick 1 at the NPC or /mplus.");
+    for (uint8 i = 0; i < 3; ++i)
+        if (profile.VaultItems[i])
+            handler.PSendSysMessage("{}. {}", i + 1, ItemChatLink(player, profile.VaultItems[i]));
 }
 
 void MythicPlusMgr::EnsureVaultChoices(Player* player)

@@ -26,6 +26,7 @@
 #include "LFGMgr.h"
 #include <algorithm>
 #include <cmath>
+#include <ctime>
 
 MythicPlusMgr* MythicPlusMgr::instance()
 {
@@ -78,6 +79,8 @@ void MythicPlusMgr::LoadConfig(bool /*reload*/)
     _fontEntry = sConfigMgr->GetOption<uint32>("MythicPlus.FontEntry", GO_MYTHIC_FONT);
     _residuumItem = sConfigMgr->GetOption<uint32>("MythicPlus.ResiduumItem", ITEM_MYTHIC_RESIDUUM);
     _abandonMs = sConfigMgr->GetOption<uint32>("MythicPlus.AbandonMs", 60000);
+    _resetWday = static_cast<uint8>(std::min<uint32>(6, sConfigMgr->GetOption<uint32>("MythicPlus.ResetWday", 5)));
+    _resetHour = static_cast<uint8>(std::min<uint32>(23, sConfigMgr->GetOption<uint32>("MythicPlus.ResetHour", 20)));
 
     uint32 forcedSeason = sConfigMgr->GetOption<uint32>("MythicPlus.SeasonId", 0);
     if (forcedSeason)
@@ -227,18 +230,82 @@ void MythicPlusMgr::SaveState()
         _weekStart, _weekIndex, _seasonId);
 }
 
+uint32 MythicPlusMgr::LastWeeklyReset(uint32 now) const
+{
+    time_t raw = static_cast<time_t>(now);
+    std::tm* local = std::localtime(&raw);
+    if (!local)
+        return now;
+
+    std::tm lt = *local;
+    int const seconds = lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec;
+    int daysBack = (lt.tm_wday - int(_resetWday) + 7) % 7;
+    if (daysBack == 0 && seconds < int(_resetHour) * 3600)
+        daysBack = 7;
+
+    lt.tm_mday -= daysBack;
+    lt.tm_hour = _resetHour;
+    lt.tm_min = 0;
+    lt.tm_sec = 0;
+    lt.tm_isdst = -1;
+    time_t reset = std::mktime(&lt);
+    if (reset <= 0)
+        return now;
+    return static_cast<uint32>(reset);
+}
+
+bool MythicPlusMgr::IsWeeklyResetAligned(uint32 timestamp) const
+{
+    time_t raw = static_cast<time_t>(timestamp);
+    std::tm* local = std::localtime(&raw);
+    if (!local)
+        return false;
+    return local->tm_wday == _resetWday && local->tm_hour == _resetHour
+        && local->tm_min == 0 && local->tm_sec == 0;
+}
+
+uint32 MythicPlusMgr::GetNextResetTime() const
+{
+    uint32 const now = static_cast<uint32>(GameTime::GetGameTime().count());
+    return LastWeeklyReset(now) + 7 * DAY;
+}
+
+std::string MythicPlusMgr::FormatNextReset(Player const* player) const
+{
+    bool const es = IsSpanish(player);
+    static char const* daysEn[7] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+    static char const* daysEs[7] = { "domingo", "lunes", "martes", "miercoles", "jueves", "viernes", "sabado" };
+    uint32 const now = static_cast<uint32>(GameTime::GetGameTime().count());
+    uint32 const next = GetNextResetTime();
+    uint32 remain = next > now ? next - now : 0;
+    return Acore::StringFormat(es ? "Proximo reset: {} {:02}:00 (en {}d {:02}h). Una reclamacion por semana."
+                                  : "Next reset: {} {:02}:00 (in {}d {:02}h). One claim per week.",
+        es ? daysEs[_resetWday] : daysEn[_resetWday], _resetHour,
+        remain / DAY, (remain % DAY) / HOUR);
+}
+
 void MythicPlusMgr::CheckWeekReset()
 {
     uint32 const now = static_cast<uint32>(GameTime::GetGameTime().count());
-    if (!_weekStart || now < _weekStart + 7 * DAY)
+    uint32 const lastReset = LastWeeklyReset(now);
+    if (!_weekStart || !IsWeeklyResetAligned(_weekStart))
+    {
+        _weekStart = lastReset;
+        SaveState();
+        return;
+    }
+    if (_weekStart == lastReset)
         return;
 
-    uint32 weeksPassed = (now - _weekStart) / (7 * DAY);
-    _weekStart += weeksPassed * 7 * DAY;
+    uint32 weeksPassed = 1;
+    if (lastReset > _weekStart)
+        weeksPassed = std::max<uint32>(1, (lastReset - _weekStart) / (7 * DAY));
+
     uint32 next = uint32(_weekIndex) + weeksPassed;
     uint32 weeks = _seasonWeeks ? _seasonWeeks : 12;
     _seasonId += next / weeks;
     _weekIndex = static_cast<uint8>(next % weeks);
+    _weekStart = lastReset;
 
     CharacterDatabase.Execute(
         "UPDATE character_mythic_profile SET week_best_level = 0, week_best_dungeon = 0, "
@@ -246,7 +313,8 @@ void MythicPlusMgr::CheckWeekReset()
         "vault_item1 = 0, vault_item2 = 0, vault_item3 = 0");
     _profiles.clear();
     SaveState();
-    LOG_INFO("module", "Mythic+: new week {} of season {}", _weekIndex + 1, _seasonId);
+    LOG_INFO("module", "Mythic+: new week {} of season {} (reset {} {:02}:00)",
+        _weekIndex + 1, _seasonId, _resetWday, _resetHour);
 }
 
 void MythicPlusMgr::Update(uint32 diff)
@@ -975,6 +1043,7 @@ void MythicPlusMgr::SendStatus(ChatHandler* handler, Player* player) const
     handler->PSendSysMessage(es ? "Miticas BFA — Temporada {} semana {}."
                                 : "Mythic+ BFA — Season {} week {}.",
         _seasonId, _weekIndex + 1);
+    handler->SendSysMessage(FormatNextReset(player));
     handler->PSendSysMessage("|cff00ccff+2|r {}  |cff00ccff+4|r {}  |cff00ccff+7|r {}  |cff00ccff+10|r {}",
         AffixName(weekly.FortTyr, es), AffixName(weekly.Plus4, es),
         AffixName(weekly.Plus7, es), AffixName(weekly.Seasonal, es));

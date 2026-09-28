@@ -70,6 +70,16 @@
 #        Description: Fail the key if the instance stays empty this long.
 #        Default:     60000
 #
+#    MythicPlus.ResetWday
+#        Description: Weekday of the weekly vault/affix reset (0 = Sunday ... 5 = Friday).
+#                     Uses the worldserver local clock.
+#        Default:     5
+#
+#    MythicPlus.ResetHour
+#        Description: Hour of the reset (0-23). Combined with ResetWday this is Friday 20:00
+#                     by default. One vault claim is allowed until the next reset.
+#        Default:     20
+#
 
 MythicPlus.Enable = 1
 MythicPlus.Announce = 1
@@ -90,3 +100,5 @@ MythicPlus.KeystoneItem = 190022
 MythicPlus.FontEntry = 254620
 MythicPlus.ResiduumItem = 190034
 MythicPlus.AbandonMs = 60000
+MythicPlus.ResetWday = 5
+MythicPlus.ResetHour = 20

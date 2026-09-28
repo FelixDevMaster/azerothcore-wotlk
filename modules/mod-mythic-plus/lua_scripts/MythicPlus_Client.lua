@@ -34,9 +34,11 @@ local L = {
     CLAIM_SLOT = "Claim",
     CLAIMED = "Claimed",
     LOCKED = "Locked",
-    VAULT_HINT = "Choose 1 of 3. Loot matches your spec.",
+    VAULT_HINT = "Hover an icon to see stats and effects. Click Claim to take that item.",
     VAULT_NEED = "Complete a key this week to unlock the vault.",
     VAULT_DONE = "Already claimed this week.",
+    VAULT_RESET = "Resets Friday 20:00 server time. One claim per week.",
+    VAULT_HOVER = "Hover for full tooltip",
     NAME = "Name",
     BOARD_SCORE = "Score",
     BEST = "Best",
@@ -72,9 +74,11 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.CLAIM_SLOT = "Reclamar"
     L.CLAIMED = "Reclamada"
     L.LOCKED = "Bloqueada"
-    L.VAULT_HINT = "Elige 1 de 3. El botin es de tu spec."
+    L.VAULT_HINT = "Pasa el raton por el icono para ver stats y efectos. Pulsa Reclamar."
     L.VAULT_NEED = "Completa una mitica esta semana para abrir el cofre."
     L.VAULT_DONE = "Ya reclamado esta semana."
+    L.VAULT_RESET = "Reset: viernes 20:00 hora del servidor. Una reclamacion por semana."
+    L.VAULT_HOVER = "Pasa el raton para ver el tooltip"
     L.NAME = "Nombre"
     L.BOARD_SCORE = "Puntuacion"
     L.BEST = "Mejor"
@@ -253,6 +257,127 @@ local function ClearLines()
     end
 end
 
+local function QualityRGB(q)
+    if q == 5 then
+        return 1, 0.5, 0
+    elseif q == 4 then
+        return 0.64, 0.21, 0.93
+    elseif q == 3 then
+        return 0, 0.44, 0.87
+    elseif q == 2 then
+        return 0.12, 1, 0
+    end
+    return 1, 1, 1
+end
+
+local function ShowItemTooltip(owner, itemId)
+    if not owner or not itemId or itemId <= 0 or not GameTooltip then
+        return
+    end
+    GameTooltip:SetOwner(owner, "ANCHOR_RIGHT")
+    GameTooltip:SetHyperlink("item:" .. itemId)
+    GameTooltip:Show()
+end
+
+local vaultCards = {}
+for i = 1, 3 do
+    local card = CreateFrame("Button", "ACMythicVaultCard" .. i, pane)
+    card:SetSize(178, 228)
+    card:SetPoint("TOPLEFT", 18 + ((i - 1) * 188), -78)
+    card:SetBackdrop({
+        bgFile = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile = true,
+        tileSize = 16,
+        edgeSize = 16,
+        insets = { left = 4, right = 4, top = 4, bottom = 4 }
+    })
+    card:SetBackdropColor(0.06, 0.05, 0.08, 0.95)
+    card:SetBackdropBorderColor(0.55, 0.35, 0.75, 0.95)
+    card:EnableMouse(true)
+    card:Hide()
+
+    local iconBtn = CreateFrame("Button", "ACMythicVaultIcon" .. i, card)
+    iconBtn:SetSize(48, 48)
+    iconBtn:SetPoint("TOP", 0, -16)
+    local iconTex = iconBtn:CreateTexture(nil, "ARTWORK")
+    iconTex:SetAllPoints()
+    iconTex:SetTexture("Interface\\Icons\\INV_Misc_QuestionMark")
+    local iconBorder = iconBtn:CreateTexture(nil, "OVERLAY")
+    iconBorder:SetTexture("Interface\\Buttons\\UI-ActionButton-Border")
+    iconBorder:SetBlendMode("ADD")
+    iconBorder:SetPoint("CENTER")
+    iconBorder:SetSize(70, 70)
+
+    local nameFS = card:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    nameFS:SetPoint("TOP", iconBtn, "BOTTOM", 0, -10)
+    nameFS:SetWidth(160)
+    nameFS:SetJustifyH("CENTER")
+
+    local ilvlFS = card:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    ilvlFS:SetPoint("TOP", nameFS, "BOTTOM", 0, -4)
+
+    local hoverFS = card:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    hoverFS:SetPoint("BOTTOM", 0, 40)
+    hoverFS:SetText(L.VAULT_HOVER)
+
+    local claim = CreateFrame("Button", nil, card, "UIPanelButtonTemplate")
+    claim:SetSize(140, 24)
+    claim:SetPoint("BOTTOM", 0, 12)
+    claim:SetText(L.CLAIM_SLOT)
+    claim:SetScript("OnClick", function()
+        AIO.Handle("MPLUS", "ClaimVault", i)
+    end)
+
+    local function bindTooltip(widget)
+        widget:SetScript("OnEnter", function(self)
+            ShowItemTooltip(self, card.itemId)
+        end)
+        widget:SetScript("OnLeave", function()
+            if GameTooltip then
+                GameTooltip:Hide()
+            end
+        end)
+    end
+    bindTooltip(card)
+    bindTooltip(iconBtn)
+
+    vaultCards[i] = { frame = card, icon = iconBtn, tex = iconTex, border = iconBorder, name = nameFS, ilvl = ilvlFS }
+end
+
+local function SetVaultCard(i, itemId)
+    local card = vaultCards[i]
+    if not card then
+        return
+    end
+    card.frame.itemId = itemId or 0
+    if not itemId or itemId <= 0 then
+        card.frame:Hide()
+        return
+    end
+    local name, _, quality, ilvl, _, _, _, _, _, tex = GetItemInfo(itemId)
+    if card.tex then
+        card.tex:SetTexture(tex or "Interface\\Icons\\INV_Misc_QuestionMark")
+    end
+    local r, g, b = QualityRGB(quality or 1)
+    card.name:SetText(name or ("#" .. itemId))
+    card.name:SetTextColor(r, g, b)
+    card.ilvl:SetText(ilvl and ("ilvl " .. ilvl) or L.VAULT_HOVER)
+    card.frame:SetBackdropBorderColor(r, g, b, 0.95)
+    if card.border then
+        card.border:SetVertexColor(r, g, b)
+    end
+    card.frame:Show()
+end
+
+local function HideVaultCards()
+    for i = 1, 3 do
+        if vaultCards[i] then
+            vaultCards[i].frame:Hide()
+        end
+    end
+end
+
 local startBtn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
 startBtn:SetSize(160, 30)
 startBtn:SetPoint("BOTTOMLEFT", 36, 28)
@@ -297,6 +422,7 @@ local function Refresh()
         lines[5]:SetText(string.format("%s:  %.1f", L.SCORE, p.score or 0))
         lines[6]:SetText(string.format("%s:  +%d  %s", L.WEEK_BEST, p.weekBest or 0, DungeonName(p.weekDungeon)))
         lines[7]:SetText(string.format("%s:  %d", L.RUNS, p.weekRuns or 0))
+        HideVaultCards()
         startBtn:Show()
         teleportBtn:Show()
         claimBtn:Show()
@@ -313,16 +439,18 @@ local function Refresh()
         for i = 1, 4 do
             lines[i + 2]:SetText(string.format("%s   %s", gates[i], AffixName(state.weekIds[i])))
         end
+        HideVaultCards()
         startBtn:Hide()
         teleportBtn:Hide()
         claimBtn:Hide()
     elseif state.tab == TAB_VAULT then
+        HideVaultCards()
         lines[1]:SetTextColor(unpack(GOLD))
         local key = p.weekBest or 0
         if key <= 0 and p.weekKeys then
             key = p.weekKeys[1] or 0
         end
-        lines[1]:SetText(string.format("%s  +%d", L.TAB_VAULT, key))
+        lines[1]:SetText(string.format("%s  +%d   —   %s", L.TAB_VAULT, key, L.VAULT_RESET))
         if (p.vault or 0) > 0 then
             lines[3]:SetText(L.VAULT_DONE)
         elseif (p.weekRuns or 0) <= 0 then
@@ -331,9 +459,7 @@ local function Refresh()
             lines[3]:SetText(L.VAULT_HINT)
             local items = p.vaultItems or { 0, 0, 0 }
             for i = 1, 3 do
-                local id = items[i] or 0
-                local name = id > 0 and (GetItemInfo(id) or ("#" .. id)) or L.LOCKED
-                lines[i + 3]:SetText(string.format("%d.  %s", i, name))
+                SetVaultCard(i, items[i] or 0)
             end
         end
         startBtn:Hide()
@@ -351,6 +477,7 @@ local function Refresh()
                     i, row.name or "?", row.score or 0, row.weekBest or 0))
             end
         end
+        HideVaultCards()
         startBtn:Hide()
         teleportBtn:Hide()
         claimBtn:Hide()
@@ -380,32 +507,6 @@ claimBtn:SetScript("OnClick", function()
     AIO.Handle("MPLUS", "ClaimKey")
 end)
 
-local vaultBtns = {}
-for i = 1, 3 do
-    local btn = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-    btn:SetSize(90, 22)
-    btn:SetPoint("BOTTOMRIGHT", -36, 28 + ((3 - i) * 26))
-    btn:SetText(L.CLAIM_SLOT .. " " .. i)
-    btn:SetScript("OnClick", function()
-        AIO.Handle("MPLUS", "ClaimVault", i)
-    end)
-    btn:Hide()
-    vaultBtns[i] = btn
-end
-
-local oldRefresh = Refresh
-Refresh = function()
-    oldRefresh()
-    local p = state.profile or {}
-    local showVault = state.tab == TAB_VAULT and (p.vault or 0) == 0 and (p.weekRuns or 0) > 0
-    for i = 1, 3 do
-        if showVault then
-            vaultBtns[i]:Show()
-        else
-            vaultBtns[i]:Hide()
-        end
-    end
-end
 
 function Handlers.ShowUI(_, data)
     if type(data) ~= "table" then

@@ -36,9 +36,10 @@ enum MythicGossipAction : uint32
     GOSSIP_MYTHIC_AFFIXES   = 4,
     GOSSIP_MYTHIC_SCORE     = 5,
     GOSSIP_MYTHIC_BOARD     = 6,
-    GOSSIP_MYTHIC_VAULT1    = 11,
-    GOSSIP_MYTHIC_VAULT2    = 12,
-    GOSSIP_MYTHIC_VAULT3    = 13
+    GOSSIP_MYTHIC_VAULT_OPEN = 10,
+    GOSSIP_MYTHIC_VAULT1     = 11,
+    GOSSIP_MYTHIC_VAULT2     = 12,
+    GOSSIP_MYTHIC_VAULT3     = 13
 };
 
 namespace
@@ -103,17 +104,17 @@ void BuildBrokerGossip(Player* player)
     {
         uint8 keyLevel = std::max(profile.WeekBestLevel, profile.WeekKeys[0]);
         AddGossipItemFor(player, GOSSIP_ICON_CHAT,
-            Acore::StringFormat(es ? "Cofre +{} — elige 1 de 3 (tu spec)"
-                                   : "Vault +{} — choose 1 of 3 (your spec)",
+            Acore::StringFormat(es ? "Inspeccionar cofre +{} (enlaces en el chat)"
+                                   : "Inspect vault +{} (links in chat)",
                 keyLevel),
-            GOSSIP_SENDER_MAIN, GOSSIP_MYTHIC_HELLO);
+            GOSSIP_SENDER_MAIN, GOSSIP_MYTHIC_VAULT_OPEN);
         for (uint8 i = 0; i < 3; ++i)
         {
             if (!profile.VaultItems[i])
                 continue;
             AddGossipItemFor(player, GOSSIP_ICON_MONEY_BAG,
-                Acore::StringFormat(es ? "Elegir: {}" : "Claim: {}",
-                    MythicPlusMgr::LocalizedItemName(player, profile.VaultItems[i])),
+                Acore::StringFormat(es ? "Reclamar {}: {}" : "Claim {}: {}",
+                    i + 1, MythicPlusMgr::LocalizedItemName(player, profile.VaultItems[i])),
                 GOSSIP_SENDER_MAIN, GOSSIP_MYTHIC_VAULT1 + i);
         }
     }
@@ -170,6 +171,9 @@ void HandleBrokerSelect(Player* player, uint32 action)
                 handler.SendSysMessage(es ? "Todavia no hay puntuaciones." : "No scores yet.");
             break;
         }
+        case GOSSIP_MYTHIC_VAULT_OPEN:
+            sMythicPlus->SendVaultPreview(player);
+            break;
         case GOSSIP_MYTHIC_VAULT1:
         case GOSSIP_MYTHIC_VAULT2:
         case GOSSIP_MYTHIC_VAULT3:
@@ -364,6 +368,9 @@ public:
     bool OnGossipHello(Player* player, Creature* creature) override
     {
         BuildBrokerGossip(player);
+        MythicProfile profile = sMythicPlus->GetProfile(player->GetGUID());
+        if (profile.WeekRuns && !profile.VaultClaimed)
+            sMythicPlus->SendVaultPreview(player);
         SendGossipMenuFor(player, NPC_TEXT_MYTHIC_BROKER, creature);
         return true;
     }
@@ -527,27 +534,10 @@ public:
             return false;
         if (!slot)
         {
-            sMythicPlus->EnsureVaultChoices(player);
-            MythicProfile profile = sMythicPlus->GetProfile(player->GetGUID());
-            bool const es = MythicPlusMgr::IsSpanish(player);
-            if (profile.VaultClaimed)
-            {
-                handler->SendSysMessage(es ? "Cofre semanal: reclamado." : "Weekly vault: claimed.");
-                return true;
-            }
-            if (!profile.WeekRuns)
-            {
-                handler->SendSysMessage(es ? "Completa una mitica esta semana."
-                                           : "Complete a key this week.");
-                return true;
-            }
-            handler->PSendSysMessage(es ? "Cofre +{} — elige 1 de 3 (.mplus vault 1-3):"
-                                        : "Vault +{} — choose 1 of 3 (.mplus vault 1-3):",
-                std::max(profile.WeekBestLevel, profile.WeekKeys[0]));
-            for (uint8 i = 0; i < 3; ++i)
-                if (profile.VaultItems[i])
-                    handler->PSendSysMessage("{}. {}", i + 1,
-                        MythicPlusMgr::LocalizedItemName(player, profile.VaultItems[i]));
+            sMythicPlus->SendVaultPreview(player);
+            handler->SendSysMessage(MythicPlusMgr::IsSpanish(player)
+                ? "Para reclamar: .mplus vault 1, 2 o 3."
+                : "To claim: .mplus vault 1, 2 or 3.");
             return true;
         }
         std::string error;
