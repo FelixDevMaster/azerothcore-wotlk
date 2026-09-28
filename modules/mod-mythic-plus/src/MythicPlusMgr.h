@@ -125,9 +125,9 @@ private:
     void RewardRun(Player* player, MythicRun const& run, bool endChest);
     void RewardGear(Player* player, uint8 keyLevel, bool vault);
     void GiveEmblems(Player* player, uint8 keyLevel);
-    static MythicLootRole LootRoleFor(Player const* player);
-    bool ItemFitsSpec(ItemTemplate const* proto, Player const* player, uint8 keyLevel, bool relaxStats) const;
-    void BuildSpecLootPool(Player const* player, uint8 keyLevel, bool relaxStats, std::vector<uint32>& out) const;
+    static MythicLootRole LootRoleFor(Player* player);
+    bool ItemFitsSpec(ItemTemplate const* proto, Player* player, uint8 keyLevel, bool relaxStats) const;
+    void BuildSpecLootPool(Player* player, uint8 keyLevel, bool relaxStats, std::vector<uint32>& out) const;
     uint32 PickSpecItem(Player* player, uint8 keyLevel, std::unordered_set<uint32> const& exclude);
     uint32 ResiduumForLevel(uint8 level) const;
     uint8 UpgradeForTime(uint32 remainingMs, uint32 limitMs) const;

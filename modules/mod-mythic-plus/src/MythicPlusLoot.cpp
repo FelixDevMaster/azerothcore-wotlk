@@ -153,7 +153,7 @@ bool IsJewelryOrCloak(uint32 invType)
 }
 }
 
-MythicLootRole MythicPlusMgr::LootRoleFor(Player const* player)
+MythicLootRole MythicPlusMgr::LootRoleFor(Player* player)
 {
     if (!player)
         return MYTHIC_LOOT_MELEE;
@@ -188,7 +188,7 @@ MythicLootRole MythicPlusMgr::LootRoleFor(Player const* player)
     }
 }
 
-bool MythicPlusMgr::ItemFitsSpec(ItemTemplate const* proto, Player const* player, uint8 keyLevel, bool relaxStats) const
+bool MythicPlusMgr::ItemFitsSpec(ItemTemplate const* proto, Player* player, uint8 keyLevel, bool relaxStats) const
 {
     if (!proto || !player)
         return false;
@@ -288,7 +288,7 @@ bool MythicPlusMgr::ItemFitsSpec(ItemTemplate const* proto, Player const* player
     return ScoreItemForRole(proto, role) >= 0;
 }
 
-void MythicPlusMgr::BuildSpecLootPool(Player const* player, uint8 keyLevel, bool relaxStats,
+void MythicPlusMgr::BuildSpecLootPool(Player* player, uint8 keyLevel, bool relaxStats,
     std::vector<uint32>& out) const
 {
     out.clear();
@@ -351,7 +351,7 @@ std::string MythicPlusMgr::ItemChatLink(Player const* player, uint32 itemId)
     if (!proto)
         return Acore::StringFormat("#{}", itemId);
 
-    uint32 color = ItemQualityColors[proto->Quality < MAX_ITEM_QUALITY ? proto->Quality : ITEM_QUALITY_COMMON];
+    uint32 color = ItemQualityColors[proto->Quality < MAX_ITEM_QUALITY ? proto->Quality : ITEM_QUALITY_NORMAL];
     return Acore::StringFormat("|c{:08x}|Hitem:{}:0:0:0:0:0:0:0:0:0|h[{}]|h|r",
         color, itemId, LocalizedItemName(player, itemId));
 }
