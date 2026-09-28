@@ -12,6 +12,7 @@
 
 #include "MythicPlus.h"
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 class ChatHandler;
@@ -36,6 +37,8 @@ public:
     void AbortTeleportCheck(ObjectGuid groupGuid, uint8 state);
     bool ClaimStarterKey(Player* player, std::string& error);
     bool ClaimVaultSlot(Player* player, uint8 slot, std::string& error);
+    void EnsureVaultChoices(Player* player);
+    static std::string LocalizedItemName(Player const* player, uint32 itemId);
     bool SetKey(Player* player, uint8 dungeonId, uint8 level, std::string& error);
     bool ForceComplete(Player* player, std::string& error);
 
@@ -115,6 +118,11 @@ private:
     void FailRun(MythicRun& run, bool abandon);
     void RewardRun(Player* player, MythicRun const& run, bool endChest);
     void RewardGear(Player* player, uint8 keyLevel, bool vault);
+    void GiveEmblems(Player* player, uint8 keyLevel);
+    static MythicLootRole LootRoleFor(Player const* player);
+    bool ItemFitsSpec(ItemTemplate const* proto, Player const* player, uint8 keyLevel, bool relaxStats) const;
+    void BuildSpecLootPool(Player const* player, uint8 keyLevel, bool relaxStats, std::vector<uint32>& out) const;
+    uint32 PickSpecItem(Player* player, uint8 keyLevel, std::unordered_set<uint32> const& exclude);
     uint32 ResiduumForLevel(uint8 level) const;
     uint8 UpgradeForTime(uint32 remainingMs, uint32 limitMs) const;
     float ScoreForRun(uint8 level, uint8 upgrade, bool timed, float overtimeRatio) const;

@@ -24,13 +24,14 @@ end
 local function LoadProfile(player)
     local q = CharDBQuery(string.format(
         "SELECT dungeon_id, key_level, depleted, overall_score, week_best_level, "
-            .. "week_best_dungeon, week_runs, vault_claimed, week_key1, week_key2, week_key3, season_id "
+            .. "week_best_dungeon, week_runs, vault_claimed, week_key1, week_key2, week_key3, season_id, "
+            .. "vault_item1, vault_item2, vault_item3 "
             .. "FROM character_mythic_profile WHERE guid = %d", GuidLow(player)))
     if not q then
         return {
             dungeonId = 0, level = 0, depleted = 0, score = 0,
             weekBest = 0, weekDungeon = 0, weekRuns = 0, vault = 0,
-            weekKeys = { 0, 0, 0 }, seasonId = 1
+            weekKeys = { 0, 0, 0 }, vaultItems = { 0, 0, 0 }, seasonId = 1
         }
     end
     return {
@@ -43,7 +44,8 @@ local function LoadProfile(player)
         weekRuns = q:GetUInt32(6),
         vault = q:GetUInt32(7),
         weekKeys = { q:GetUInt32(8), q:GetUInt32(9), q:GetUInt32(10) },
-        seasonId = q:GetUInt32(11)
+        seasonId = q:GetUInt32(11),
+        vaultItems = { q:GetUInt32(12), q:GetUInt32(13), q:GetUInt32(14) }
     }
 end
 
@@ -183,6 +185,11 @@ function Handlers.ClaimVault(player, slot)
         return
     end
     PushRequest(player, ACTION_VAULT, slot)
+    if CreateLuaEvent then
+        CreateLuaEvent(function()
+            Handlers.RequestOpen(player)
+        end, 700, 2)
+    end
 end
 
 if CreateLuaEvent then

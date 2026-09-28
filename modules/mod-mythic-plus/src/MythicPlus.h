@@ -200,6 +200,15 @@ struct MythicRun
     }
 };
 
+enum MythicLootRole : uint8
+{
+    MYTHIC_LOOT_TANK   = 0,
+    MYTHIC_LOOT_HEAL   = 1,
+    MYTHIC_LOOT_CASTER = 2,
+    MYTHIC_LOOT_MELEE  = 3,
+    MYTHIC_LOOT_RANGED = 4
+};
+
 struct MythicProfile
 {
     MythicKeystone Key;
@@ -209,6 +218,7 @@ struct MythicProfile
     uint8 WeekRuns = 0;
     uint8 VaultClaimed = 0;
     std::array<uint8, 3> WeekKeys{};
+    std::array<uint32, 3> VaultItems{};
     uint32 SeasonId = 1;
 };
 

@@ -34,6 +34,9 @@ local L = {
     CLAIM_SLOT = "Claim",
     CLAIMED = "Claimed",
     LOCKED = "Locked",
+    VAULT_HINT = "Choose 1 of 3. Loot matches your spec.",
+    VAULT_NEED = "Complete a key this week to unlock the vault.",
+    VAULT_DONE = "Already claimed this week.",
     NAME = "Name",
     BOARD_SCORE = "Score",
     BEST = "Best",
@@ -69,6 +72,9 @@ if GetLocale() == "esES" or GetLocale() == "esMX" then
     L.CLAIM_SLOT = "Reclamar"
     L.CLAIMED = "Reclamada"
     L.LOCKED = "Bloqueada"
+    L.VAULT_HINT = "Elige 1 de 3. El botin es de tu spec."
+    L.VAULT_NEED = "Completa una mitica esta semana para abrir el cofre."
+    L.VAULT_DONE = "Ya reclamado esta semana."
     L.NAME = "Nombre"
     L.BOARD_SCORE = "Puntuacion"
     L.BEST = "Mejor"
@@ -153,7 +159,7 @@ local state = {
     profile = {
         dungeonId = 0, level = 0, depleted = 0, score = 0,
         weekBest = 0, weekDungeon = 0, weekRuns = 0, vault = 0,
-        weekKeys = { 0, 0, 0 }
+        weekKeys = { 0, 0, 0 }, vaultItems = { 0, 0, 0 }
     },
     weekIds = { 0, 0, 0, 0 },
     board = {}
@@ -312,14 +318,23 @@ local function Refresh()
         claimBtn:Hide()
     elseif state.tab == TAB_VAULT then
         lines[1]:SetTextColor(unpack(GOLD))
-        lines[1]:SetText(L.TAB_VAULT)
-        local need = { 1, 4, 8 }
-        for i = 1, 3 do
-            local claimed = (math.floor((p.vault or 0) / (2 ^ (i - 1))) % 2) > 0
-            local key = (p.weekKeys and p.weekKeys[i]) or 0
-            local status = claimed and L.CLAIMED or (((p.weekRuns or 0) >= need[i] and key > 0) and L.CLAIM_SLOT or L.LOCKED)
-            lines[i + 2]:SetText(string.format("%s %d   +%d   (%d %s)   %s",
-                L.SLOT, i, key, need[i], L.RUNS_SHORT, status))
+        local key = p.weekBest or 0
+        if key <= 0 and p.weekKeys then
+            key = p.weekKeys[1] or 0
+        end
+        lines[1]:SetText(string.format("%s  +%d", L.TAB_VAULT, key))
+        if (p.vault or 0) > 0 then
+            lines[3]:SetText(L.VAULT_DONE)
+        elseif (p.weekRuns or 0) <= 0 then
+            lines[3]:SetText(L.VAULT_NEED)
+        else
+            lines[3]:SetText(L.VAULT_HINT)
+            local items = p.vaultItems or { 0, 0, 0 }
+            for i = 1, 3 do
+                local id = items[i] or 0
+                local name = id > 0 and (GetItemInfo(id) or ("#" .. id)) or L.LOCKED
+                lines[i + 3]:SetText(string.format("%d.  %s", i, name))
+            end
         end
         startBtn:Hide()
         teleportBtn:Hide()
@@ -381,7 +396,8 @@ end
 local oldRefresh = Refresh
 Refresh = function()
     oldRefresh()
-    local showVault = state.tab == TAB_VAULT
+    local p = state.profile or {}
+    local showVault = state.tab == TAB_VAULT and (p.vault or 0) == 0 and (p.weekRuns or 0) > 0
     for i = 1, 3 do
         if showVault then
             vaultBtns[i]:Show()

@@ -103,6 +103,9 @@ void MythicPlusMgr::EnsureDatabase()
         " `week_key1` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         " `week_key2` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
         " `week_key3` TINYINT UNSIGNED NOT NULL DEFAULT 0,"
+        " `vault_item1` INT UNSIGNED NOT NULL DEFAULT 0,"
+        " `vault_item2` INT UNSIGNED NOT NULL DEFAULT 0,"
+        " `vault_item3` INT UNSIGNED NOT NULL DEFAULT 0,"
         " `season_id` INT UNSIGNED NOT NULL DEFAULT 1,"
         " PRIMARY KEY (`guid`)"
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -181,6 +184,15 @@ void MythicPlusMgr::EnsureDatabase()
         " PRIMARY KEY (`guid`)"
         ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+    QueryResult vaultCols = CharacterDatabase.Query(
+        "SHOW COLUMNS FROM character_mythic_profile LIKE 'vault_item1'");
+    if (!vaultCols)
+        CharacterDatabase.DirectExecute(
+            "ALTER TABLE character_mythic_profile "
+            "ADD COLUMN vault_item1 INT UNSIGNED NOT NULL DEFAULT 0, "
+            "ADD COLUMN vault_item2 INT UNSIGNED NOT NULL DEFAULT 0, "
+            "ADD COLUMN vault_item3 INT UNSIGNED NOT NULL DEFAULT 0");
+
     LoadState();
 }
 
@@ -230,7 +242,8 @@ void MythicPlusMgr::CheckWeekReset()
 
     CharacterDatabase.Execute(
         "UPDATE character_mythic_profile SET week_best_level = 0, week_best_dungeon = 0, "
-        "week_runs = 0, vault_claimed = 0, week_key1 = 0, week_key2 = 0, week_key3 = 0");
+        "week_runs = 0, vault_claimed = 0, week_key1 = 0, week_key2 = 0, week_key3 = 0, "
+        "vault_item1 = 0, vault_item2 = 0, vault_item3 = 0");
     _profiles.clear();
     SaveState();
     LOG_INFO("module", "Mythic+: new week {} of season {}", _weekIndex + 1, _seasonId);
@@ -357,7 +370,8 @@ void MythicPlusMgr::LoadProfile(ObjectGuid guid)
     MythicProfile profile;
     QueryResult result = CharacterDatabase.Query(
         "SELECT dungeon_id, key_level, depleted, overall_score, week_best_level, week_best_dungeon, "
-        "week_runs, vault_claimed, week_key1, week_key2, week_key3, season_id "
+        "week_runs, vault_claimed, week_key1, week_key2, week_key3, season_id, "
+        "vault_item1, vault_item2, vault_item3 "
         "FROM character_mythic_profile WHERE guid = {}", guid.GetCounter());
     if (result)
     {
@@ -374,6 +388,12 @@ void MythicPlusMgr::LoadProfile(ObjectGuid guid)
         profile.WeekKeys[1] = fields[9].Get<uint8>();
         profile.WeekKeys[2] = fields[10].Get<uint8>();
         profile.SeasonId = fields[11].Get<uint32>();
+        if (result->GetFieldCount() >= 15)
+        {
+            profile.VaultItems[0] = fields[12].Get<uint32>();
+            profile.VaultItems[1] = fields[13].Get<uint32>();
+            profile.VaultItems[2] = fields[14].Get<uint32>();
+        }
     }
 
     _profiles[guid] = profile;
@@ -389,10 +409,12 @@ void MythicPlusMgr::SaveProfile(ObjectGuid guid)
     CharacterDatabase.Execute(
         "REPLACE INTO character_mythic_profile (guid, dungeon_id, key_level, depleted, overall_score, "
         "week_best_level, week_best_dungeon, week_runs, vault_claimed, week_key1, week_key2, week_key3, "
-        "season_id) VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
+        "season_id, vault_item1, vault_item2, vault_item3) "
+        "VALUES ({}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {})",
         guid.GetCounter(), p.Key.DungeonId, p.Key.Level, p.Key.Depleted ? 1 : 0, p.OverallScore,
         p.WeekBestLevel, p.WeekBestDungeon, p.WeekRuns, p.VaultClaimed,
-        p.WeekKeys[0], p.WeekKeys[1], p.WeekKeys[2], p.SeasonId);
+        p.WeekKeys[0], p.WeekKeys[1], p.WeekKeys[2], p.SeasonId,
+        p.VaultItems[0], p.VaultItems[1], p.VaultItems[2]);
 }
 
 MythicProfile MythicPlusMgr::GetProfile(ObjectGuid guid)
@@ -444,6 +466,7 @@ void MythicPlusMgr::HandleLogin(Player* player)
         EnsureKeyItem(player);
     if (_residuumItem && player->HasItemCount(_residuumItem, 1, true))
         SendCustomItemQuery(player, _residuumItem);
+    EnsureVaultChoices(player);
 }
 
 void MythicPlusMgr::HandleLogout(ObjectGuid guid)
@@ -970,6 +993,15 @@ void MythicPlusMgr::SendStatus(ChatHandler* handler, Player* player) const
     handler->PSendSysMessage(es ? "Puntuacion: {:.1f}  Mejor semana: +{}  Runs: {}"
                                 : "Score: {:.1f}  Week best: +{}  Runs: {}",
         p.OverallScore, p.WeekBestLevel, p.WeekRuns);
+    if (p.VaultClaimed)
+        handler->SendSysMessage(es ? "Cofre: reclamado esta semana." : "Vault: claimed this week.");
+    else if (p.VaultItems[0])
+        handler->PSendSysMessage(es ? "Cofre +{}: elige 1 de 3 (.mplus vault)."
+                                    : "Vault +{}: choose 1 of 3 (.mplus vault).",
+            std::max(p.WeekBestLevel, p.WeekKeys[0]));
+    else if (!p.WeekRuns)
+        handler->SendSysMessage(es ? "Cofre: completa una mitica esta semana."
+                                   : "Vault: complete a key this week.");
 
     if (MythicRun const* run = GetRunForPlayer(player))
     {

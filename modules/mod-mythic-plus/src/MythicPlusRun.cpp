@@ -456,6 +456,7 @@ void MythicPlusMgr::RewardRun(Player* player, MythicRun const& run, bool endChes
         ChatHandler(player->GetSession()).PSendSysMessage(
             es ? "Recompensa de +{} entregada." : "+{} end-of-run reward granted.", run.Level);
     RefreshKeyItem(player);
+    EnsureVaultChoices(player);
 }
 
 void MythicPlusMgr::RewardGear(Player* player, uint8 keyLevel, bool /*vault*/)
@@ -463,62 +464,10 @@ void MythicPlusMgr::RewardGear(Player* player, uint8 keyLevel, bool /*vault*/)
     if (!player)
         return;
 
-    static uint32 const lootLow[] = {
-        39424, 39416, 39291, 37835, 37647, 37220, 40080, 40074, 40431, 37197
-    };
-    static uint32 const lootMid[] = {
-        45456, 45303, 45297, 45507, 45135, 45484, 45814, 46048, 46053, 45518
-    };
-    static uint32 const lootHigh[] = {
-        47251, 47659, 47526, 47427, 47089, 47920, 47261, 48007, 47915, 47732
-    };
-    static uint32 const lootIcc[] = {
-        49982, 49975, 50011, 50020, 50198, 50399, 50402, 50604, 50614, 50692
-    };
-    static uint32 const lootTop[] = {
-        50709, 50618, 51382, 54557, 54588, 54590, 53132, 53134, 54556, 54559
-    };
-
-    uint32 const* pool = lootLow;
-    uint32 count = 10;
-    if (keyLevel >= 14)
-    {
-        pool = lootTop;
-    }
-    else if (keyLevel >= 11)
-    {
-        pool = lootIcc;
-    }
-    else if (keyLevel >= 8)
-    {
-        pool = lootHigh;
-    }
-    else if (keyLevel >= 5)
-    {
-        pool = lootMid;
-    }
-
-    uint32 itemId = pool[urand(0, count - 1)];
-    GiveItem(player, itemId, 1);
-
-    uint32 emblems = 47241;
-    uint32 emblemCount = 2;
-    if (keyLevel >= 14)
-    {
-        emblems = 49426;
-        emblemCount = 5;
-    }
-    else if (keyLevel >= 10)
-    {
-        emblems = 49426;
-        emblemCount = 3;
-    }
-    else if (keyLevel >= 7)
-    {
-        emblems = 47241;
-        emblemCount = 4;
-    }
-    GiveItem(player, emblems, emblemCount);
+    uint32 itemId = PickSpecItem(player, keyLevel, {});
+    if (itemId)
+        GiveItem(player, itemId, 1);
+    GiveEmblems(player, keyLevel);
 }
 
 bool MythicPlusMgr::ClaimVaultSlot(Player* player, uint8 slot, std::string& error)
@@ -527,38 +476,44 @@ bool MythicPlusMgr::ClaimVaultSlot(Player* player, uint8 slot, std::string& erro
         return false;
     if (slot < 1 || slot > 3)
     {
-        error = Text(player, "Vault slots are 1, 2 or 3.", "Las ranuras del cofre son 1, 2 o 3.");
+        error = Text(player, "Choose vault option 1, 2 or 3.", "Elige la opcion 1, 2 o 3 del cofre.");
         return false;
     }
 
     LoadProfile(player->GetGUID());
     MythicProfile& profile = _profiles[player->GetGUID()];
-    uint8 bit = uint8(1 << (slot - 1));
-    if (profile.VaultClaimed & bit)
+    if (profile.VaultClaimed)
     {
-        error = IsSpanish(player) ? "Esa ranura ya fue reclamada." : "That vault slot is already claimed.";
+        error = Text(player, "You already claimed this week's vault.",
+            "Ya reclamaste el cofre de esta semana.");
+        return false;
+    }
+    if (!profile.WeekRuns)
+    {
+        error = Text(player, "Complete a key this week to unlock the vault.",
+            "Completa una mitica esta semana para abrir el cofre.");
         return false;
     }
 
-    uint8 requiredRuns = slot == 1 ? 1 : (slot == 2 ? 4 : 8);
-    uint8 keyLevel = profile.WeekKeys[slot - 1];
-    if (slot == 1)
-        keyLevel = std::max(keyLevel, profile.WeekBestLevel);
-
-    if (!keyLevel || profile.WeekRuns < requiredRuns)
+    EnsureVaultChoices(player);
+    uint32 itemId = profile.VaultItems[slot - 1];
+    if (!itemId)
     {
-        error = IsSpanish(player)
-            ? Acore::StringFormat("Ranura {}: necesitas {} runs (tienes {}).", slot, requiredRuns, profile.WeekRuns)
-            : Acore::StringFormat("Slot {}: need {} runs (you have {}).", slot, requiredRuns, profile.WeekRuns);
+        error = Text(player, "The vault has no item in that option.",
+            "Esa opcion del cofre no tiene item.");
         return false;
     }
 
-    profile.VaultClaimed |= bit;
+    uint8 keyLevel = std::max(profile.WeekBestLevel, profile.WeekKeys[0]);
+    profile.VaultClaimed = 1;
     SaveProfile(player->GetGUID());
-    RewardGear(player, keyLevel, true);
+    GiveItem(player, itemId, 1);
+    GiveEmblems(player, keyLevel);
     GiveItem(player, _residuumItem, ResiduumForLevel(keyLevel) * 2);
+
+    bool const es = IsSpanish(player);
     ChatHandler(player->GetSession()).PSendSysMessage(
-        IsSpanish(player) ? "Cofre semanal ranura {} (+{})." : "Weekly vault slot {} (+{}).",
-        slot, keyLevel);
+        es ? "Cofre semanal +{}: {}." : "Weekly vault +{}: {}.",
+        keyLevel, LocalizedItemName(player, itemId));
     return true;
 }

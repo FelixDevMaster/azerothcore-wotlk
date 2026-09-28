@@ -40,13 +40,14 @@ Utgarde Keep, The Nexus, Azjol-Nerub, Ahn'kahet, Drak'Tharon Keep, Gundrak, Hall
 
 Each timed/overtime run writes a score (`25 + 5×level`, with +1/+2/+3 time bonuses or an overtime penalty). Fortified and Tyrannical bests are stored per dungeon. Overall score is `1.5×higher + 0.5×lower` per dungeon, then summed.
 
-Weekly vault (3 slots):
+Weekly vault (BfA-style, one claim per week):
 
-1. Best key this week (1 run)
-2. Second-best key (4 runs)
-3. Third-best key (8 runs)
+- Unlock it by completing at least one key that week. Item level follows your **highest** key.
+- The chest rolls **3 pieces for your class and spec** (armor type + primary stats; different slots when possible).
+- You **choose 1 of 3**. Residuum is 2× the highest key.
+- End-of-run loot is also spec-appropriate (one piece, no choice).
 
-End-of-run loot is existing WotLK gear + emblems, scaled by key level, plus **Echoes of Domination** (Titan Residuum analog, item `190034`).
+End-of-run and vault loot is existing WotLK gear + emblems, scaled by key level, plus **Echoes of Domination** (Titan Residuum analog, item `190034`).
 
 The keystone item (`190022`) shows the live dungeon and level in its name (`Mythic Keystone: Utgarde Keep (+12)` / `Piedra angular mitica: Fortaleza de Utgarde (+12)`). Completing, failing, claiming, or `.mplus setkey` destroys and recreates the item and sends a custom item-query so the bag name updates. Icons use stock 3.3.5 `ItemDisplayInfo.dbc` ids (no client patch): **31029** (Key to the Focusing Iris) for the keystone and **56465** (Abyss Crystal) for residuum.
 
@@ -92,7 +93,7 @@ Talk to the **Keystone Broker** (Dalaran, Stormwind, Orgrimmar, Argent Tournamen
 3. Use the **Font of Power** at the entrance (or `.mplus start`) to insert the key. The same
    5-man composition is required inside the instance.
 4. Kill every dungeon boss and fill Enemy Forces before the timer.
-5. Claim vault slots at the broker once per week.
+5. Open the weekly vault at the broker or `.mplus vault` and pick **1 of 3** spec items.
 
 Commands: `.mplus status|key|week|start|teleport|vault [1-3]|top`
 
