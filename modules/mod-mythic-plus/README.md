@@ -80,11 +80,15 @@ Character tables are created automatically on startup. `data/sql/characters/` is
 ### AIO UI (optional)
 
 1. Install AIO: `AIO_Server` → `lua_scripts/` (next to `AIO.lua`), `AIO_Client` → `Interface/AddOns/` on every client.
-2. Copy `lua_scripts/MythicPlus_Server.lua` and `MythicPlus_Client.lua` next to `AIO.lua` if your worldserver reads another path.
-3. Restart worldserver (or `.reload eluna`).
-4. In-game: `/mplus` or `/mythic` toggles the window immediately (dark gold retail-style
-   panel). Tabs: **Keystone | Affixes | Great Vault | Ranking**. Relog or `/reload` after
-   updating the Lua so AIO ships the new client file. The HUD appears during a run.
+2. Copy **both** `MythicPlus_Client.lua` and `MythicPlus_Server.lua` next to `AIO.lua`
+   if your worldserver reads another path.
+3. Restart worldserver or `.reload eluna`, then client `/reload` (or relog) so AIO
+   ships the new file.
+4. In-game: `/mplus` or `/mythic`. The window opens and asks the server for your
+   key, score and vault. Tabs: **Keystone | Affixes | Great Vault | Ranking**.
+   Each button writes a chat line. The server answers with a `Mythic+` message.
+   If the window stays on "Syncing", AIO is not reaching the server. The HUD
+   appears during a run.
 
 ## Play
 
